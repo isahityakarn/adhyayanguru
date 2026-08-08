@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { Home, BookOpen, MessageSquare, Trophy, Users, Settings, LogIn, LayoutDashboard, LogOut } from "lucide-react";
+import { Home, BookOpen, MessageSquare, Trophy, Users, Settings, LogIn, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { c, headingFont } from "../utils/theme";
 
 const PAGES = [
@@ -14,6 +15,7 @@ const PAGES = [
 ];
 
 export default function Layout({ children }) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userRole = localStorage.getItem("studyyodha_user_role");
@@ -34,7 +36,7 @@ export default function Layout({ children }) {
 
   return (
     <div className="app-shell" style={{ background: c.bg }}>
-      <div className="app-frame">
+      <div className={`app-frame ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
         {/* Sidebar navigation */}
         <div className="sidebar" style={{ background: c.dark, borderRight: `1px solid ${c.dark}` }}>
           {/* Logo */}
@@ -43,6 +45,15 @@ export default function Layout({ children }) {
               AdhyayanGuru
             </h1>
             <p className="sidebar-description">Adhyayan AI Tutor</p>
+            <button
+              type="button"
+              className="sidebar-layout-toggle"
+              onClick={() => setIsSidebarCollapsed((current) => !current)}
+              title={isSidebarCollapsed ? "Expand layout" : "Collapse layout"}
+              aria-label={isSidebarCollapsed ? "Expand layout" : "Collapse layout"}
+            >
+              {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
           </div>
           
           {/* Navigation */}
@@ -57,7 +68,7 @@ export default function Layout({ children }) {
                   className={`sidebar-link ${isActive ? "active" : ""}`}
                   style={{ textDecoration: "none" }}
                 >
-                  {/* <span className="sidebar-number">{String(index + 1).padStart(2, "0")}</span> */}
+                  <Icon size={18} aria-hidden="true" />
                   <span>{page.label}</span>
                 </Link>
               );

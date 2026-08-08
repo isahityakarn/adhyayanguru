@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Mic, Camera, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input, PrimaryButton } from "../components/UI";
@@ -43,6 +43,9 @@ export default function TutorChatPage() {
     { from: "ai", text: "Page 112 par formula box mein dekhein: sin θ = Opposite ÷ Hypotenuse. Chahe toh isi triangle par ek numeric example try karte hain?" },
   ]);
   const [draft, setDraft] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+  const recognitionRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -107,6 +110,58 @@ export default function TutorChatPage() {
     setMessages([...messages, { from: "user", text: draft }]);
     setDraft("");
   };
+
+  const toggleVoiceInput = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceError("Voice input is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-IN";
+    recognition.onstart = () => {
+      setVoiceError("");
+      setIsListening(true);
+    };
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.trim();
+      if (!transcript) return;
+      setMessages((current) => [...current, { from: "user", text: transcript }]);
+      setDraft("");
+    };
+    recognition.onerror = () => {
+      setVoiceError("Could not capture your voice. Please try again.");
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    recognitionRef.current = recognition;
+    setVoiceError("");
+    setIsListening(true);
+
+    try {
+      recognition.start();
+    } catch {
+      recognitionRef.current = null;
+      setIsListening(false);
+      setVoiceError("Could not start voice input. Please try again.");
+    }
+  };
+
+  useEffect(() => () => {
+    recognitionRef.current?.stop();
+  }, []);
 
   return (
     <div className="tutor-page">
@@ -179,10 +234,13 @@ export default function TutorChatPage() {
           <div className="tutor-composer">
             <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Apna doubt likhein..." className="tutor-message-input" />
             <div className="tutor-composer-actions">
-              <button title="Voice input"><Mic size={15} /></button>
+              <button type="button" className={isListening ? "voice-active" : ""} title={isListening ? "Stop voice input" : "Voice input"} onClick={toggleVoiceInput} aria-label={isListening ? "Stop voice input" : "Voice input"}>
+                <Mic size={15} />
+              </button>
               <button title="Attach photo"><Camera size={15} /></button>
               <PrimaryButton onClick={send}><Send size={15} color="white" /></PrimaryButton>
             </div>
+            {voiceError && <p className="tutor-picker-error">{voiceError}</p>}
           </div>
         </aside>
       </div>
