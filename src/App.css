@@ -1,0 +1,37 @@
+#root { min-height: 100vh; }
+.app-shell { min-height: 100vh; padding: 28px; }
+.app-frame { display: flex; min-height: calc(100vh - 56px); max-width: 1450px; margin: auto; overflow: hidden; border: 1px solid #d7d1c2; border-radius: 16px; background: #fbf9f2; box-shadow: 0 16px 40px rgba(24,39,70,.08); }
+.sidebar { width: 260px; flex: 0 0 260px; color: #f4f0e5; }
+.sidebar-brand { padding: 38px 36px 34px; border-bottom: 1px solid rgba(255,255,255,.14); }
+.sidebar-brand h1 { margin: 0; color: #f6f2e8; font-size: 28px; letter-spacing: -1px; }
+.sidebar-description { margin: 8px 0 0; color: #bfc4cf; font-size: 12px; letter-spacing: .2px; }
+.sidebar-nav { padding: 20px 0; }
+.sidebar-link { display: flex; gap: 14px; align-items: center; min-height: 58px; padding: 0 34px; color: #bfc4cf; text-decoration: none; font-size: 16px; font-weight: 500; border-left: 4px solid transparent; transition: background .2s, color .2s; }
+.sidebar-link:hover { color: #fff; background: rgba(255,255,255,.06); }
+.sidebar-link.active { color: #fff; background: rgba(255,255,255,.12); border-left-color: #f2a72e; }
+.sidebar-number { color: #f2a72e; font-family: 'DM Mono', monospace; font-size: 14px; }
+.sidebar-footer { flex: 1; }
+.main-scroll { flex: 1; overflow-y: auto; background-color: #fbf9f2; background-image: linear-gradient(rgba(78,74,64,.13) 1px, transparent 1px); background-size: 100% 56px; }
+.main-content { max-width: 1120px; margin: auto; padding: 42px 64px 80px; }
+.main-content h1, .main-content h2, .main-content h3 { color: #182746; font-family: 'Libre Baskerville', Georgia, serif; }
+.main-content h1 { font-size: 36px; line-height: 1.2; }
+.main-content h2 { font-size: 25px; }
+.rounded-2xl { border-radius: 16px; }
+.rounded-xl, .rounded-lg { border-radius: 10px; }
+.text-center { text-align: center; }
+.grid { display: grid; }.grid-cols-1 { grid-template-columns: 1fr; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 8px; }.gap-3 { gap: 12px; }.gap-4 { gap: 16px; }.gap-5 { gap: 20px; }.gap-6 { gap: 24px; }
+.flex-1 { flex: 1; }.flex-shrink-0 { flex-shrink: 0; }.w-full { width: 100%; }.max-w-2xl { max-width: 672px; }.max-w-md { max-width: 448px; }.mx-auto { margin-inline: auto; }
+.mb-1 { margin-bottom: 4px; }.mb-2 { margin-bottom: 8px; }.mb-3 { margin-bottom: 12px; }.mb-4 { margin-bottom: 16px; }.mb-5 { margin-bottom: 20px; }.mb-6 { margin-bottom: 24px; }.mb-8 { margin-bottom: 32px; }.mb-10 { margin-bottom: 40px; }
+.mt-1 { margin-top: 4px; }.mt-2 { margin-top: 8px; }.mt-4 { margin-top: 16px; }.mt-6 { margin-top: 24px; }
+.p-0 { padding: 0; }.p-3 { padding: 12px; }.p-4 { padding: 16px; }.p-5 { padding: 20px; }.p-6 { padding: 24px; }.p-8 { padding: 32px; }.p-10 { padding: 40px; }
+.px-3 { padding-inline: 12px; }.px-4 { padding-inline: 16px; }.px-5 { padding-inline: 20px; }.py-1 { padding-block: 4px; }.py-2 { padding-block: 8px; }.py-3 { padding-block: 12px; }
+.text-xs { font-size: 12px; }.text-sm { font-size: 14px; }.text-lg { font-size: 18px; }.text-xl { font-size: 22px; }.text-2xl { font-size: 26px; }.text-3xl { font-size: 32px; }.text-4xl { font-size: 40px; }.text-5xl { font-size: 48px; }
+.font-bold { font-weight: 700; }.font-semibold { font-weight: 600; }.leading-relaxed { line-height: 1.65; }.relative { position: relative; }.absolute { position: absolute; }.overflow-hidden { overflow: hidden; }.opacity-60 { opacity: .6; }
+.space-y-2 > * + * { margin-top: 8px; }.space-y-3 > * + * { margin-top: 12px; }.space-y-4 > * + * { margin-top: 16px; }
+@media (min-width: 768px) { [class~="md:grid-cols-2"] { grid-template-columns: repeat(2, minmax(0,1fr)); } [class~="md:grid-cols-3"] { grid-template-columns: repeat(3, minmax(0,1fr)); } [class~="md:grid-cols-4"] { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@media (min-width: 1024px) { [class~="lg:grid-cols-2"] { grid-template-columns: repeat(2, minmax(0,1fr)); } [class~="lg:grid-cols-4"] { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@media (max-width: 760px) { .app-shell { padding: 0; }.app-frame { min-height: 100vh; border-radius: 0; border: 0; }.sidebar { width: 92px; flex-basis: 92px; }.sidebar-brand { padding: 24px 10px; text-align: center; }.sidebar-brand h1 { font-size: 15px; letter-spacing: 0; }.sidebar-link { justify-content: center; padding: 14px 6px; min-height: 52px; font-size: 0; }.sidebar-number { font-size: 13px; }.main-content { padding: 30px 20px 60px; }.main-content h1 { font-size: 28px; }.text-4xl { font-size: 32px; }.text-5xl { font-size: 36px; } }
