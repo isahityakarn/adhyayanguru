@@ -28,6 +28,7 @@ export default function Layout({ children }) {
   function handleLogout() {
     localStorage.removeItem("studyyodha_user");
     localStorage.removeItem("studyyodha_user_role");
+    localStorage.removeItem("studyyodha_token");
     navigate("/");
   }
 

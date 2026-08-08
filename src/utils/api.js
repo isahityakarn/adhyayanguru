@@ -5,11 +5,17 @@ function buildUrl(path) {
   return `${API_BASE_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
 }
 
+function getAuthToken() {
+  return localStorage.getItem("studyyodha_token");
+}
+
 async function request(path, options = {}) {
+  const token = getAuthToken();
   const response = await fetch(buildUrl(path), {
     ...options,
     headers: {
       Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });

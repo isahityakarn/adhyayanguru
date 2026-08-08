@@ -73,6 +73,15 @@ function getApiFieldErrors(errors) {
   }, {});
 }
 
+function getAuthToken(response) {
+  return response?.token
+    ?? response?.access_token
+    ?? response?.data?.token
+    ?? response?.data?.access_token
+    ?? response?.user?.token
+    ?? response?.user?.access_token;
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [classLevels, setClassLevels] = useState([]);
@@ -151,6 +160,9 @@ export default function LoginPage() {
         plan_id: Number(form.plan),
       });
 
+      const signupToken = getAuthToken(signupResponse);
+      if (signupToken) localStorage.setItem("studyyodha_token", signupToken);
+
       localStorage.setItem("studyyodha_user", JSON.stringify({
         ...signupResponse?.user,
         name: form.name,
@@ -158,6 +170,8 @@ export default function LoginPage() {
         phone: form.phone,
         schoolName: form.schoolName,
         plan: form.plan,
+        class_id: Number(form.classLevel),
+        board_id: Number(form.board),
         classLevel: form.classLevel,
         board: form.board,
         language: form.language === "1" ? "hi" : "en",
@@ -198,6 +212,8 @@ export default function LoginPage() {
     try {
       await signInSchema.validate(loginForm, { abortEarly: false });
       const loginResponse = await post(import.meta.env.VITE_LOGIN_ENDPOINT || "/login", loginForm);
+      const loginToken = getAuthToken(loginResponse);
+      if (loginToken) localStorage.setItem("studyyodha_token", loginToken);
       const loggedInUser = loginResponse?.user || { email: loginForm.email };
       const userRole = loggedInUser.role === "admin" || loggedInUser.role === 1 || loggedInUser.role === "1"
         ? "admin"
