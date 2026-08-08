@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { c, displayFont, headingFont } from "../utils/theme";
 
 export function Pill({ children, tone = "primary" }) {
@@ -58,6 +60,79 @@ export function Bar({ pct, color = c.primary }) {
   );
 }
 
+export function FormField({ label, children, className = "" }) {
+  return (
+    <div className={`mb-4 ${className}`}>
+      <label className="block text-sm font-semibold mb-2" style={{ color: c.dark }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+export function Input({ icon: Icon, className = "", ...props }) {
+  return (
+    <div className="relative">
+      {Icon && (
+        <div className="absolute left-3 top-1/2 -translate-y-1/2">
+          <Icon size={18} color={c.gray} />
+        </div>
+      )}
+      <input
+        className={`form-control ${Icon ? "form-control-with-icon" : ""} ${className}`}
+        {...props}
+      />
+    </div>
+  );
+}
+
+export function PasswordInput({ icon: Icon, className = "", ...props }) {
+  const [visible, setVisible] = useState(false);
+  const ToggleIcon = visible ? EyeOff : Eye;
+
+  return (
+    <div className="relative">
+      {Icon && (
+        <div className="absolute left-3 top-1/2 -translate-y-1/2">
+          <Icon size={18} color={c.gray} />
+        </div>
+      )}
+      <input
+        type={visible ? "text" : "password"}
+        className={`form-control form-control-password ${Icon ? "form-control-with-icon" : ""} ${className}`}
+        {...props}
+      />
+      <button
+        type="button"
+        className="password-toggle"
+        onClick={() => setVisible((current) => !current)}
+        aria-label={visible ? "Hide password" : "Show password"}
+      >
+        <ToggleIcon size={18} color={c.gray} />
+      </button>
+    </div>
+  );
+}
+
+export function Select({ icon: Icon, children, className = "", ...props }) {
+  return (
+    <div className="relative">
+      {Icon && (
+        <div className="absolute left-3 top-1/2 -translate-y-1/2">
+          <Icon size={18} color={c.gray} />
+        </div>
+      )}
+      <select
+        className={`form-control ${Icon ? "form-control-with-icon" : ""} ${className}`}
+        {...props}
+      >
+        {children}
+      </select>
+    </div>
+  );
+}
+
 export function PrimaryButton({ children, className = "", variant = "primary", ...props }) {
   const variants = {
     primary: { bg: c.primary, hover: c.primaryDark, text: c.white },
@@ -69,7 +144,7 @@ export function PrimaryButton({ children, className = "", variant = "primary", .
   
   return (
     <button
-      className={`font-semibold text-sm px-5 py-2.5 rounded-lg transition-all duration-200 hover:shadow-md active:scale-95 ${className}`}
+      className={`button-medium font-semibold rounded-lg transition-all duration-200 hover:shadow-md active:scale-95 ${className}`}
       style={{ 
         background: style.bg, 
         color: style.text,

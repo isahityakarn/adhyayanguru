@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Upload, Edit, UserCheck, UserX } from "lucide-react";
-import { Card, PrimaryButton } from "../components/UI";
+import { Card, Input, PrimaryButton, Select } from "../components/UI";
 import { c, headingFont } from "../utils/theme";
 
 export default function AdminPage() {
@@ -49,23 +49,13 @@ export default function AdminPage() {
           <Card className="mb-4">
             <h3 className="text-sm font-bold mb-4" style={{ color: c.dark }}>Upload New Chapter</h3>
             <div className="grid grid-cols-3 gap-3 mb-3">
-              <select className="px-3 py-2 rounded-lg text-sm" 
-                style={{ background: c.white, border: `2px solid ${c.lighterGray}` }}>
-                <option>Class 10</option>
-              </select>
-              <select className="px-3 py-2 rounded-lg text-sm" 
-                style={{ background: c.white, border: `2px solid ${c.lighterGray}` }}>
-                <option>CBSE</option>
-              </select>
-              <select className="px-3 py-2 rounded-lg text-sm" 
-                style={{ background: c.white, border: `2px solid ${c.lighterGray}` }}>
-                <option>Mathematics</option>
-              </select>
+              <Select><option>Class 10</option></Select>
+              <Select><option>CBSE</option></Select>
+              <Select><option>Mathematics</option></Select>
             </div>
-            <input
+            <Input
               placeholder="Chapter title, e.g. Trigonometry"
-              className="w-full px-3 py-2 rounded-lg text-sm mb-3"
-              style={{ background: c.white, border: `2px solid ${c.lighterGray}` }}
+              className="mb-3"
             />
             <div
               className="rounded-lg p-6 text-center mb-3 cursor-pointer hover:bg-gray-50 transition-all"

@@ -5,6 +5,10 @@ import { c, headingFont, displayFont } from "../utils/theme";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const storedUser = JSON.parse(localStorage.getItem("studyyodha_user") || "null");
+  const userName = storedUser?.name || "Student";
+  const userClass = storedUser?.classLevel || "Class 10";
+  const userBoard = storedUser?.board || "CBSE";
   
   const stats = [
     { icon: Clock, num: "4.5h", lbl: "Studied this week", color: c.primary },
@@ -25,10 +29,10 @@ export default function DashboardPage() {
       <div className="flex justify-between items-start mb-8">
         <div>
           <h1 className="text-3xl font-bold mb-1" style={{ ...headingFont, color: c.dark }}>
-            Welcome back, Aarav! 👋
+            Welcome back, {userName}! 👋
           </h1>
           <p className="text-sm" style={{ color: c.gray }}>
-            Class 10 · CBSE · Ready to continue learning?
+            {userClass} · {userBoard} · Ready to continue learning?
           </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl" 

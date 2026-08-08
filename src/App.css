@@ -1,6 +1,6 @@
 #root { min-height: 100vh; }
-.app-shell { min-height: 100vh; padding: 28px; }
-.app-frame { display: flex; min-height: calc(100vh - 56px); max-width: 1450px; margin: auto; overflow: hidden; border: 1px solid #d7d1c2; border-radius: 16px; background: #fbf9f2; box-shadow: 0 16px 40px rgba(24,39,70,.08); }
+.app-shell { min-height: 100vh; width: 100%; }
+.app-frame { display: flex; min-height: 100vh; width: 100%; overflow: hidden; background: #fbf9f2; }
 .sidebar { width: 260px; flex: 0 0 260px; color: #f4f0e5; }
 .sidebar-brand { padding: 38px 36px 34px; border-bottom: 1px solid rgba(255,255,255,.14); }
 .sidebar-brand h1 { margin: 0; color: #f6f2e8; font-size: 28px; letter-spacing: -1px; }
@@ -10,12 +10,21 @@
 .sidebar-link:hover { color: #fff; background: rgba(255,255,255,.06); }
 .sidebar-link.active { color: #fff; background: rgba(255,255,255,.12); border-left-color: #f2a72e; }
 .sidebar-number { color: #f2a72e; font-family: 'DM Mono', monospace; font-size: 14px; }
-.sidebar-footer { flex: 1; }
+.sidebar-footer { display: flex; flex: 1; align-items: flex-end; padding: 24px 20px; }
+.sidebar-logout { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; color: #bfc4cf; background: transparent; border: 0; font-size: 14px; text-align: left; transition: background .2s, color .2s; }
+.sidebar-logout:hover { color: #fff; background: rgba(255,255,255,.08); }
 .main-scroll { flex: 1; overflow-y: auto; background-color: #fbf9f2; background-image: linear-gradient(rgba(78,74,64,.13) 1px, transparent 1px); background-size: 100% 56px; }
-.main-content { max-width: 1120px; margin: auto; padding: 42px 64px 80px; }
+.main-content { width: 100%; padding: 42px 64px 80px; }
+.login-page { min-height: calc(100vh - 122px); width: 100%; }
 .main-content h1, .main-content h2, .main-content h3 { color: #182746; font-family: 'Libre Baskerville', Georgia, serif; }
 .main-content h1 { font-size: 36px; line-height: 1.2; }
 .main-content h2 { font-size: 25px; }
+.button-medium { min-height: 40px; padding: 8px 16px; font-size: 14px; line-height: 1.5; }
+.form-control { width: 100%; min-height: 44px; padding: 10px 16px; color: #182746; background: #fff; border: 2px solid #e4e1d8; border-radius: 10px; font-size: 14px; transition: border-color .2s, box-shadow .2s; }
+.form-control:focus { outline: none; border-color: #e07a3f; box-shadow: 0 0 0 2px rgba(224,122,63,.14); }
+.form-control-with-icon { padding-left: 40px; }
+.form-control-password { padding-right: 44px; }
+.password-toggle { position: absolute; top: 50%; right: 12px; display: flex; padding: 0; color: #687083; background: transparent; border: 0; transform: translateY(-50%); }
 .rounded-2xl { border-radius: 16px; }
 .rounded-xl, .rounded-lg { border-radius: 10px; }
 .text-center { text-align: center; }
@@ -34,4 +43,4 @@
 .space-y-2 > * + * { margin-top: 8px; }.space-y-3 > * + * { margin-top: 12px; }.space-y-4 > * + * { margin-top: 16px; }
 @media (min-width: 768px) { [class~="md:grid-cols-2"] { grid-template-columns: repeat(2, minmax(0,1fr)); } [class~="md:grid-cols-3"] { grid-template-columns: repeat(3, minmax(0,1fr)); } [class~="md:grid-cols-4"] { grid-template-columns: repeat(4, minmax(0,1fr)); } }
 @media (min-width: 1024px) { [class~="lg:grid-cols-2"] { grid-template-columns: repeat(2, minmax(0,1fr)); } [class~="lg:grid-cols-4"] { grid-template-columns: repeat(4, minmax(0,1fr)); } }
-@media (max-width: 760px) { .app-shell { padding: 0; }.app-frame { min-height: 100vh; border-radius: 0; border: 0; }.sidebar { width: 92px; flex-basis: 92px; }.sidebar-brand { padding: 24px 10px; text-align: center; }.sidebar-brand h1 { font-size: 15px; letter-spacing: 0; }.sidebar-link { justify-content: center; padding: 14px 6px; min-height: 52px; font-size: 0; }.sidebar-number { font-size: 13px; }.main-content { padding: 30px 20px 60px; }.main-content h1 { font-size: 28px; }.text-4xl { font-size: 32px; }.text-5xl { font-size: 36px; } }
+@media (max-width: 760px) { .app-shell { padding: 0; }.app-frame { min-height: 100vh; border-radius: 0; border: 0; }.sidebar { width: 92px; flex-basis: 92px; }.sidebar-brand { padding: 24px 10px; text-align: center; }.sidebar-brand h1 { font-size: 15px; letter-spacing: 0; }.sidebar-link { justify-content: center; padding: 14px 6px; min-height: 52px; font-size: 0; }.sidebar-number { font-size: 13px; }.sidebar-footer { padding: 24px 6px; }.sidebar-logout { justify-content: center; padding: 12px 6px; }.sidebar-logout span { display: none; }.main-content { padding: 30px 20px 60px; }.main-content h1 { font-size: 28px; }.text-4xl { font-size: 32px; }.text-5xl { font-size: 36px; } }

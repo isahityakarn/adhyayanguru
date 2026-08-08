@@ -1,17 +1,72 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle, Clock, Lock, Play } from "lucide-react";
 import { Card, PrimaryButton, Bar } from "../components/UI";
 import { c, headingFont } from "../utils/theme";
+import { get } from "../utils/api";
+
+function getItems(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.results)) return response.results;
+  return [];
+}
+
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("studyyodha_user") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function getSubjectValue(subject, fallback) {
+  return subject?.id ?? subject?.subject_id ?? fallback;
+}
+
+function getSubjectName(subject) {
+  return subject?.name ?? subject?.title ?? subject?.subject_name ?? "Subject";
+}
+
+function getSubjectStatus(subject) {
+  const status = String(subject?.status || "progress").toLowerCase();
+  if (["done", "completed", "complete"].includes(status)) return "done";
+  if (["locked", "lock"].includes(status)) return "locked";
+  return "progress";
+}
 
 export default function ChapterListPage() {
   const navigate = useNavigate();
-  
-  const chapters = [
-    { idx: 1, title: "Real numbers", meta: "12 topics · 3 practice tests", status: "done", pct: 100 },
-    { idx: 2, title: "Polynomials", meta: "9 topics · 2 practice tests", status: "done", pct: 100 },
-    { idx: 8, title: "Introduction to trigonometry", meta: "14 topics · 4 practice tests", status: "progress", pct: 60 },
-    { idx: 9, title: "Circles", meta: "7 topics · 2 practice tests", status: "locked", pct: 0 },
-  ];
+  const user = getStoredUser();
+  const classId = user?.class_id ?? user?.classLevel;
+  const boardId = user?.board_id ?? user?.board;
+  const [subjects, setSubjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSubjects() {
+      if (!classId || !boardId) {
+        setError("Class and board details are missing from your profile.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await get(`/subjects?class_id=${encodeURIComponent(classId)}&board_id=${encodeURIComponent(boardId)}`);
+        if (active) setSubjects(getItems(response));
+      } catch (requestError) {
+        if (active) setError(requestError.message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadSubjects();
+    return () => { active = false; };
+  }, [classId, boardId]);
   
   const statusConfig = { 
     done: { label: "Completed", icon: CheckCircle, color: c.accent },
@@ -24,7 +79,7 @@ export default function ChapterListPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="text-sm font-semibold mb-2" style={{ color: c.primary }}>
-          Mathematics · Class 10 · CBSE
+          {user?.class_name || user?.classLevel || "Class"} · {user?.board_name || user?.board || "Board"}
         </div>
         <h1 className="text-3xl font-bold" style={{ ...headingFont, color: c.dark }}>
           Chapters
@@ -33,7 +88,19 @@ export default function ChapterListPage() {
 
       {/* Chapters List */}
       <div className="space-y-4">
-        {chapters.map((ch) => {
+        {loading && <p className="text-sm" style={{ color: c.gray }}>Loading subjects...</p>}
+        {!loading && error && <p className="text-sm" style={{ color: c.error }}>{error}</p>}
+        {!loading && !error && subjects.length === 0 && (
+          <p className="text-sm" style={{ color: c.gray }}>No subjects found for your class and board.</p>
+        )}
+        {!loading && !error && subjects.map((subject, index) => {
+          const ch = {
+            idx: getSubjectValue(subject, index + 1),
+            title: getSubjectName(subject),
+            meta: subject?.meta || subject?.description || "Available subject",
+            status: getSubjectStatus(subject),
+            pct: Number(subject?.progress ?? subject?.pct ?? 0),
+          };
           const config = statusConfig[ch.status];
           const Icon = config.icon;
           const isLocked = ch.status === "locked";

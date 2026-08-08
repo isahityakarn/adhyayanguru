@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Mic, Camera, Send, ChevronLeft, ChevronRight, Bot, User } from "lucide-react";
-import { Card, PrimaryButton } from "../components/UI";
+import { Card, Input, PrimaryButton } from "../components/UI";
 import { c, headingFont } from "../utils/theme";
 
 export default function TutorChatPage() {
@@ -115,18 +115,12 @@ export default function TutorChatPage() {
 
           {/* Input */}
           <div className="flex gap-2">
-            <input
+            <Input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
               placeholder="Apna doubt yahan type karein..."
-              className="flex-1 px-4 py-3 rounded-lg text-sm focus:outline-none focus:ring-2 transition-all"
-              style={{ 
-                background: c.white, 
-                border: `2px solid ${c.lighterGray}`,
-              }}
-              onFocus={(e) => e.target.style.borderColor = c.primary}
-              onBlur={(e) => e.target.style.borderColor = c.lighterGray}
+              className="flex-1"
             />
             <button 
               className="w-12 h-12 rounded-lg flex items-center justify-center transition-all hover:bg-gray-100" 
