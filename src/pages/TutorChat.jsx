@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Mic, Camera, Send, ChevronLeft, ChevronRight } from "lucide-react";
+import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { Input, PrimaryButton } from "../components/UI";
 import { get } from "../utils/api";
 
@@ -27,6 +27,37 @@ function getChapterDetail(response) {
   return response?.chapter ?? response?.data?.chapter ?? response?.data ?? response;
 }
 
+function getUserLanguage() {
+  try {
+    const user = JSON.parse(localStorage.getItem("studyyodha_user") || "null");
+    return String(user?.language || user?.language_pref || "en").toLowerCase();
+  } catch {
+    return "en";
+  }
+}
+
+function getGreetingMessage() {
+  const hour = new Date().getHours();
+  const isHindi = getUserLanguage().startsWith("hi");
+  let greeting;
+
+  if (hour >= 5 && hour < 12) {
+    greeting = isHindi ? "सुप्रभात" : "Good morning";
+  } else if (hour >= 12 && hour < 17) {
+    greeting = isHindi ? "नमस्कार" : "Good afternoon";
+  } else {
+    greeting = isHindi ? "शुभ संध्या" : "Good evening";
+  }
+
+  return isHindi
+    ? `${greeting} मैं अध्ययन हूँ। आज मैं आपकी पढ़ाई में कैसे मदद कर सकता हूँ?`
+    : `${greeting}! I am Adhyayan. How can I help you with your studies today?`;
+}
+
+function getInitialMessages() {
+  return [{ from: "ai", text: getGreetingMessage() }];
+}
+
 export default function TutorChatPage() {
   const [searchParams] = useSearchParams();
   const subjectId = searchParams.get("subject_id");
@@ -37,11 +68,7 @@ export default function TutorChatPage() {
   const [chapter, setChapter] = useState(null);
   const [chapterLoading, setChapterLoading] = useState(false);
   const [chapterError, setChapterError] = useState("");
-  const [messages, setMessages] = useState([
-    { from: "ai", text: "Sin, cos aur tan — teeno ratios is page ke triangle ABC se hi aa rahe hain. Kaunsa part samajhna hai?" },
-    { from: "user", text: "Sin theta ka formula kya hai?" },
-    { from: "ai", text: "Page 112 par formula box mein dekhein: sin θ = Opposite ÷ Hypotenuse. Chahe toh isi triangle par ek numeric example try karte hain?" },
-  ]);
+  const [messages, setMessages] = useState(getInitialMessages);
   const [draft, setDraft] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState("");
@@ -108,6 +135,11 @@ export default function TutorChatPage() {
   const send = () => {
     if (!draft.trim()) return;
     setMessages([...messages, { from: "user", text: draft }]);
+    setDraft("");
+  };
+
+  const clearMessages = () => {
+    setMessages([]);
     setDraft("");
   };
 
@@ -226,11 +258,15 @@ export default function TutorChatPage() {
           <div className="tutor-messages">
             {messages.map((m, i) => (
               <div key={i} className={`tutor-message ${m.from === "user" ? "user-message" : "ai-message"}`}>
-                <div className="tutor-message-label">{m.from === "ai" ? "AI" : "You"}</div>
+                <div className="tutor-message-label">{m.from === "ai" ? "Adhyayan" : "You"}</div>
                 <div>{m.text}</div>
               </div>
             ))}
           </div>
+          <button type="button" className="tutor-clear-chat" onClick={clearMessages} title="Clear chat" aria-label="Clear chat">
+            <Trash2 size={15} />
+            <span>Clear chat</span>
+          </button>
           <div className="tutor-composer">
             <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Apna doubt likhein..." className="tutor-message-input" />
             <div className="tutor-composer-actions">

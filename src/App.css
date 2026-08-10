@@ -59,6 +59,8 @@
 .ai-message { background: #dcede6; }
 .user-message { margin-left: auto; color: #fff; background: #182746; border-radius: 9px 9px 0 9px; }
 .tutor-message-label { margin-bottom: 3px; opacity: .65; font-size: 9px; text-transform: uppercase; }
+.tutor-clear-chat { display: inline-flex; align-items: center; gap: 6px; align-self: flex-end; margin: 7px 0 0; padding: 5px 8px; color: #687083; background: transparent; border: 0; font-size: 11px; cursor: pointer; }
+.tutor-clear-chat:hover { color: #b74d3d; }
 .tutor-composer { padding-top: 10px; }
 .tutor-message-input.form-control { min-height: 36px; padding: 8px 10px; border-radius: 8px; font-size: 12px; }
 .tutor-composer-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 7px; }
