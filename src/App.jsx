@@ -8,16 +8,21 @@ import TutorChatPage from "./pages/TutorChat";
 import QuizPage from "./pages/Quiz";
 import ParentDashboardPage from "./pages/ParentDashboard";
 import AdminPage from "./pages/Admin";
+import AdminUploadPage from "./pages/AdminUpload";
 import "./App.css";
 
-function AdminRoute() {
-  return localStorage.getItem("studyyodha_user_role") === "admin"
-    ? <AdminPage />
-    : <Navigate to="/" replace />;
+function AdminRoute({ children }) {
+  const role = localStorage.getItem("studyyodha_user_role");
+  const isAdmin = role === "admin";
+  if (!isAdmin) return <Navigate to="/login" replace />;
+  return children || <AdminPage />;
 }
 
 function StudentRoute({ children }) {
-  return localStorage.getItem("studyyodha_user_role") === "student"
+  const role = localStorage.getItem("studyyodha_user_role");
+  const token = localStorage.getItem("studyyodha_token");
+  const isAuthenticated = role === "student" || role === "admin" || Boolean(token);
+  return isAuthenticated
     ? children
     : <Navigate to="/login" replace />;
 }
@@ -35,6 +40,7 @@ export default function App() {
           <Route path="/quiz" element={<StudentRoute><QuizPage /></StudentRoute>} />
           <Route path="/parent" element={<StudentRoute><ParentDashboardPage /></StudentRoute>} />
           <Route path="/admin" element={<AdminRoute />} />
+          <Route path="/admin/upload" element={<AdminRoute><AdminUploadPage /></AdminRoute>} />
         </Routes>
       </Layout>
     </Router>

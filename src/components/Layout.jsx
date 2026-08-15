@@ -11,7 +11,7 @@ const PAGES = [
   { id: "tutor", label: "AI tutor chat", path: "/tutor", icon: MessageSquare, studentOnly: true },
   { id: "quiz", label: "Practice quiz", path: "/quiz", icon: Trophy, studentOnly: true },
   { id: "parent", label: "Parent dashboard", path: "/parent", icon: Users, studentOnly: true },
-  { id: "admin", label: "Admin panel", path: "/admin", adminOnly: true },
+  { id: "admin", label: "Admin panel", path: "/admin", icon: Settings, adminOnly: true },
 ];
 
 export default function Layout({ children }) {
@@ -68,7 +68,7 @@ export default function Layout({ children }) {
                   className={`sidebar-link ${isActive ? "active" : ""}`}
                   style={{ textDecoration: "none" }}
                 >
-                  <Icon size={18} aria-hidden="true" />
+                  {Icon && <Icon size={18} aria-hidden="true" />}
                   <span>{page.label}</span>
                 </Link>
               );

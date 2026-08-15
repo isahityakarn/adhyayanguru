@@ -214,13 +214,21 @@ export default function LoginPage() {
       const loginResponse = await post(import.meta.env.VITE_LOGIN_ENDPOINT || "/login", loginForm);
       const loginToken = getAuthToken(loginResponse);
       if (loginToken) localStorage.setItem("studyyodha_token", loginToken);
+      
       const loggedInUser = loginResponse?.user || { email: loginForm.email };
-      const userRole = loggedInUser.role === "admin" || loggedInUser.role === 1 || loggedInUser.role === "1"
-        ? "admin"
-        : "student";
+      const rawRole = String(loggedInUser.role || "").toLowerCase();
+      const isAdmin = rawRole === "admin" || rawRole === "1" || loggedInUser.role === 1 || rawRole === "super_admin";
+      const userRole = isAdmin ? "admin" : "student";
+
       localStorage.setItem("studyyodha_user", JSON.stringify(loggedInUser));
       localStorage.setItem("studyyodha_user_role", userRole);
-      navigate("/dashboard");
+
+      // Route based on role
+      if (isAdmin) {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       if (error instanceof yup.ValidationError) {
         const errors = {};
@@ -246,11 +254,35 @@ export default function LoginPage() {
             {isLogin ? "Welcome Back" : "Create Your Account"}
           </h1>
           <p className="text-sm" style={{ color: c.gray }}>
-            {isLogin ? "Log in to continue learning" : "Start your learning journey in under a minute"}
+            {isLogin
+              ? "Sign in with your student or administrator credentials"
+              : "Start your learning journey in under a minute"}
           </p>
         </div>
         
         <Card>
+          {isLogin && (
+            <div className="mb-4 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-amber-800">Demo Quick-Fill:</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLoginForm({ email: "admin@studyyodha.in", password: "admin123" })}
+                  className="px-2 py-1 rounded bg-amber-600 text-white font-bold text-[11px] hover:bg-amber-700 transition-colors"
+                >
+                  Admin (admin@studyyodha.in)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginForm({ email: "sanskritikarn@gmail.com", password: "password123" })}
+                  className="px-2 py-1 rounded bg-teal-700 text-white font-bold text-[11px] hover:bg-teal-800 transition-colors"
+                >
+                  Student Demo
+                </button>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={isLogin ? handleLogin : handleSubmit}>
           {isLogin ? (
             <LoginFields form={loginForm} errors={loginErrors} updateForm={updateLoginForm} />

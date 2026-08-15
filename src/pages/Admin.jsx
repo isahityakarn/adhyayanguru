@@ -1,21 +1,18 @@
 import { useState } from "react";
-import { Upload, Edit, UserCheck, UserX } from "lucide-react";
-import { Card, Input, PrimaryButton, Select } from "../components/UI";
+import { Upload, Users, BookOpen, Sparkles, UserCheck, UserX, Plus, Shield } from "lucide-react";
+import AdminUploadPage from "./AdminUpload";
+import { Card, PrimaryButton } from "../components/UI";
 import { c, headingFont } from "../utils/theme";
 
 export default function AdminPage() {
+  const [activeAdminTab, setActiveAdminTab] = useState("content"); // 'content' | 'users'
+
   const [students, setStudents] = useState([
     { initials: "AS", name: "Aarav Sharma", meta: "Class 10 · CBSE · Premium", active: true },
     { initials: "PK", name: "Priya Kumari", meta: "Class 8 · CBSE · Free plan", active: true },
     { initials: "RV", name: "Rohan Verma", meta: "Class 12 · CBSE · Premium", active: false },
     { initials: "SN", name: "Sneha Nair", meta: "Class 6 · State Board · Free plan", active: true },
   ]);
-  
-  const books = [
-    { title: "Real numbers", meta: "Class 10 · Mathematics · CBSE" },
-    { title: "Trigonometry", meta: "Class 10 · Mathematics · CBSE" },
-    { title: "Life processes", meta: "Class 10 · Science · CBSE" },
-  ];
 
   const toggleStudent = (idx) => {
     setStudents(students.map((s, i) => (i === idx ? { ...s, active: !s.active } : s)));
@@ -23,87 +20,66 @@ export default function AdminPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-8">
-        <div className="text-sm font-semibold mb-2" style={{ color: c.primary }}>
-          Administrator Panel
+      {/* Top Admin Bar Switcher */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white">
+            <Shield size={22} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
+              AdhyayanGuru Admin Portal
+            </h1>
+            <p className="text-xs text-gray-500">
+              Manage curriculum content, automated PDF text & question extraction, and student permissions
+            </p>
+          </div>
         </div>
-        <h1 className="text-3xl font-bold" style={{ ...headingFont, color: c.dark }}>
-          Content & User Management
-        </h1>
+
+        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
+          <button
+            onClick={() => setActiveAdminTab("content")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeAdminTab === "content"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <BookOpen size={14} color={c.primary} />
+            PDF & Question Ingestion
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab("users")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeAdminTab === "users"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <Users size={14} color={c.accent} />
+            Student Access ({students.length})
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT: Content Management */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
-              Books & Chapters
-            </h2>
-            <PrimaryButton className="text-sm">
-              + Add Book
-            </PrimaryButton>
-          </div>
-
-          {/* Upload Form */}
-          <Card className="mb-4">
-            <h3 className="text-sm font-bold mb-4" style={{ color: c.dark }}>Upload New Chapter</h3>
-            <div className="grid grid-cols-3 gap-3 mb-3">
-              <Select><option>Class 10</option></Select>
-              <Select><option>CBSE</option></Select>
-              <Select><option>Mathematics</option></Select>
+      {/* Content Tab: Full PDF Upload & Question Extraction Dashboard */}
+      {activeAdminTab === "content" ? (
+        <AdminUploadPage />
+      ) : (
+        /* Users Tab: Student Management */
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
+                Student Access & Permissions
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Control active student subscriptions and platform access
+              </p>
             </div>
-            <Input
-              placeholder="Chapter title, e.g. Trigonometry"
-              className="mb-3"
-            />
-            <div
-              className="rounded-lg p-6 text-center mb-3 cursor-pointer hover:bg-gray-50 transition-all"
-              style={{ border: `2px dashed ${c.lightGray}` }}
-            >
-              <Upload size={24} color={c.gray} className="mx-auto mb-2" />
-              <div className="text-sm font-semibold" style={{ color: c.dark }}>
-                Drop PDF here or click to upload
-              </div>
-              <div className="text-xs mt-1" style={{ color: c.gray }}>
-                Support: PDF, max 50MB
-              </div>
-            </div>
-            <PrimaryButton className="w-full">Upload Chapter</PrimaryButton>
-          </Card>
-
-          {/* Books List */}
-          <div className="space-y-2">
-            {books.map((b) => (
-              <Card key={b.title} hover>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="text-sm font-bold mb-1" style={{ color: c.dark }}>
-                      {b.title}
-                    </div>
-                    <div className="text-xs" style={{ color: c.gray }}>
-                      {b.meta}
-                    </div>
-                  </div>
-                  <button className="flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg transition-all hover:bg-gray-100"
-                    style={{ color: c.primary }}>
-                    <Edit size={16} />
-                    Edit
-                  </button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* RIGHT: Student Management */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
-              Student Access
-            </h2>
-            <PrimaryButton className="text-sm">
-              + Add Student
+            <PrimaryButton className="text-xs flex items-center gap-1.5">
+              <Plus size={14} /> Add Student
             </PrimaryButton>
           </div>
 
@@ -114,7 +90,10 @@ export default function AdminPage() {
                   <div className="flex items-center gap-3">
                     <div
                       className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                      style={{ background: s.active ? c.primaryBg : c.lighterGray, color: s.active ? c.primary : c.gray }}
+                      style={{
+                        background: s.active ? c.primaryBg : c.lighterGray,
+                        color: s.active ? c.primary : c.gray,
+                      }}
                     >
                       {s.initials}
                     </div>
@@ -127,23 +106,27 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                      style={{ 
+                    <div
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                      style={{
                         background: s.active ? `${c.accent}20` : `${c.error}20`,
-                        color: s.active ? c.accentDark : c.error
-                      }}>
+                        color: s.active ? c.accentDark : c.error,
+                      }}
+                    >
                       {s.active ? <UserCheck size={14} /> : <UserX size={14} />}
                       {s.active ? "Active" : "Blocked"}
                     </div>
+
                     <div
                       onClick={() => toggleStudent(i)}
                       className="relative cursor-pointer flex-shrink-0 transition-all"
-                      style={{ 
-                        width: 44, 
-                        height: 24, 
-                        borderRadius: 24, 
-                        background: s.active ? c.accent : c.lightGray 
+                      style={{
+                        width: 44,
+                        height: 24,
+                        borderRadius: 24,
+                        background: s.active ? c.accent : c.lightGray,
                       }}
                     >
                       <div
@@ -155,7 +138,7 @@ export default function AdminPage() {
                           left: s.active ? 23 : 3,
                           background: c.white,
                           transition: "left .2s ease",
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                         }}
                       />
                     </div>
@@ -165,7 +148,7 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

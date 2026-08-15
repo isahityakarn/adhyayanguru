@@ -42,6 +42,23 @@ export function post(path, body, options = {}) {
       "Content-Type": "application/json",
       ...options.headers,
     },
-    body: JSON.stringify(body),
+    body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
   });
 }
+
+export function put(path, body, options = {}) {
+  return request(path, {
+    ...options,
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+export function del(path, options = {}) {
+  return request(path, { ...options, method: "DELETE" });
+}
+
