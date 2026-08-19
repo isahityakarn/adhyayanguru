@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, BookOpen, CheckCircle, Clock, Lock, Play } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle, Clock, Lock, Play, AlertCircle } from "lucide-react";
 import { Card, PrimaryButton, Bar } from "../components/UI";
 import { c, headingFont } from "../utils/theme";
 import { get } from "../utils/api";
@@ -47,28 +47,25 @@ export default function ChapterListPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let active = true;
+    loadSubjects();
+  }, [classId, boardId]);
 
-    async function loadSubjects() {
-      if (!classId || !boardId) {
-        setError("Class and board details are missing from your profile.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await get(`/subjects?class_id=${encodeURIComponent(classId)}&board_id=${encodeURIComponent(boardId)}`);
-        if (active) setSubjects(getItems(response));
-      } catch (requestError) {
-        if (active) setError(requestError.message);
-      } finally {
-        if (active) setLoading(false);
-      }
+  async function loadSubjects() {
+    if (!classId || !boardId) {
+      setError("Class and board details are missing from your profile.");
+      setLoading(false);
+      return;
     }
 
-    loadSubjects();
-    return () => { active = false; };
-  }, [classId, boardId]);
+    try {
+      const response = await get(`/subjects?class_id=${encodeURIComponent(classId)}&board_id=${encodeURIComponent(boardId)}`);
+      setSubjects(getItems(response));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
   
   const statusConfig = { 
     done: { label: "Completed", icon: CheckCircle, color: c.accent },
@@ -122,7 +119,9 @@ export default function ChapterListPage() {
                   {config.label}
                 </div>
               </div>
-              <h2 className="text-xl font-bold mb-2" style={{ color: c.dark }}>{ch.title}</h2>
+              <h2 className="text-xl font-bold mb-2" style={{ color: c.dark }}>
+                {ch.title}
+              </h2>
               <p className="text-sm mb-5" style={{ color: c.gray }}>{ch.meta}</p>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold" style={{ color: c.gray }}>Course progress</span>

@@ -7,8 +7,10 @@ import ChapterListPage from "./pages/ChapterList";
 import TutorChatPage from "./pages/TutorChat";
 import QuizPage from "./pages/Quiz";
 import ParentDashboardPage from "./pages/ParentDashboard";
+import PlansPage from "./pages/Plans";
 import AdminPage from "./pages/Admin";
 import AdminUploadPage from "./pages/AdminUpload";
+import SubscriptionGuard from "./utils/SubscriptionGuard";
 import "./App.css";
 
 function AdminRoute({ children }) {
@@ -35,9 +37,40 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<StudentRoute><DashboardPage /></StudentRoute>} />
-          <Route path="/chapters" element={<StudentRoute><ChapterListPage /></StudentRoute>} />
-          <Route path="/tutor" element={<StudentRoute><TutorChatPage /></StudentRoute>} />
-          <Route path="/quiz" element={<StudentRoute><QuizPage /></StudentRoute>} />
+          <Route path="/plans" element={<StudentRoute><PlansPage /></StudentRoute>} />
+          
+          {/* Protected routes with subscription check */}
+          <Route 
+            path="/chapters" 
+            element={
+              <StudentRoute>
+                <SubscriptionGuard>
+                  <ChapterListPage />
+                </SubscriptionGuard>
+              </StudentRoute>
+            } 
+          />
+          <Route 
+            path="/tutor" 
+            element={
+              <StudentRoute>
+                <SubscriptionGuard>
+                  <TutorChatPage />
+                </SubscriptionGuard>
+              </StudentRoute>
+            } 
+          />
+          <Route 
+            path="/quiz" 
+            element={
+              <StudentRoute>
+                <SubscriptionGuard>
+                  <QuizPage />
+                </SubscriptionGuard>
+              </StudentRoute>
+            } 
+          />
+          
           <Route path="/parent" element={<StudentRoute><ParentDashboardPage /></StudentRoute>} />
           <Route path="/admin" element={<AdminRoute />} />
           <Route path="/admin/upload" element={<AdminRoute><AdminUploadPage /></AdminRoute>} />

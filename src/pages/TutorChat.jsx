@@ -1,9 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2, Volume2 } from "lucide-react";
+import remarkGfm from "remark-gfm";
+import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Square, BookOpen, Maximize2, PanelLeftClose } from "lucide-react";
 import { Input, PrimaryButton } from "../components/UI";
 import { get, post } from "../utils/api";
+
+function cleanMathFormatting(text) {
+  if (!text || typeof text !== "string") return "";
+  let cleaned = text;
+
+  // Replace \text{...}, \mathrm{...}, \mathbf{...} with inner text
+  cleaned = cleaned.replace(/\\(?:text|mathrm|mathbf)\{([^}]+)\}/g, "$1");
+
+  // Replace common LaTeX symbols
+  cleaned = cleaned
+    .replace(/\\times/g, "×")
+    .replace(/\\div/g, "÷")
+    .replace(/\\pm/g, "±")
+    .replace(/\\neq/g, "≠")
+    .replace(/\\approx/g, "≈")
+    .replace(/\\cdot/g, "·")
+    .replace(/\\degree/g, "°")
+    .replace(/\\leq?/g, "≤")
+    .replace(/\\geq?/g, "≥")
+    .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1 / $2)");
+
+  // Remove LaTeX display math ($$...$$) and inline math ($...$) dollar delimiters
+  cleaned = cleaned.replace(/\$\$([\s\S]*?)\$\$/g, "$1");
+  cleaned = cleaned.replace(/\$([^$\n]+)\$/g, "$1");
+
+  return cleaned;
+}
 
 const TUTOR_CHAT_ENDPOINT = import.meta.env.VITE_TUTOR_CHAT_ENDPOINT || "/tutor/chat";
 
@@ -82,7 +111,7 @@ function getTutorReply(response) {
 function cleanTextForSpeech(text) {
   if (!text || typeof text !== "string") return "";
 
-  let cleaned = text;
+  let cleaned = cleanMathFormatting(text);
 
   // 1. Remove code blocks
   cleaned = cleaned.replace(/```[\s\S]*?```/g, "");
@@ -139,6 +168,63 @@ function getChapterContent(chapter) {
     ?? null;
 }
 
+function getBestIndianFemaleVoice(isHindi = true) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return null;
+  const voices = window.speechSynthesis.getVoices?.() || [];
+  if (!voices || voices.length === 0) return null;
+
+  const femaleKeywords = [
+    "female", "woman", "swara", "kalpana", "neerja", "heera",
+    "veena", "lekha", "kajal", "aditi", "pooja", "priya",
+    "raveena", "zira", "natural", "online", "neural"
+  ];
+
+  // 1. Prioritize Hindi female voice (e.g. Swara, Kalpana, Lekha, Google हिन्दी)
+  if (isHindi) {
+    const hindiFemale = voices.find((v) => {
+      const name = (v.name || "").toLowerCase();
+      const lang = (v.lang || "").toLowerCase().replace("_", "-");
+      const isHi = lang.startsWith("hi");
+      const isFem = femaleKeywords.some((kw) => name.includes(kw));
+      return isHi && isFem;
+    });
+    if (hindiFemale) return hindiFemale;
+
+    const anyHindi = voices.find((v) => {
+      const lang = (v.lang || "").toLowerCase().replace("_", "-");
+      return lang.startsWith("hi");
+    });
+    if (anyHindi) return anyHindi;
+  }
+
+  // 2. Prioritize Indian English female voice (e.g. Neerja, Heera, Veena, Kajal, etc.)
+  const indianEngFemale = voices.find((v) => {
+    const name = (v.name || "").toLowerCase();
+    const lang = (v.lang || "").toLowerCase().replace("_", "-");
+    const isEnIn = lang === "en-in" || lang.startsWith("en-in") || name.includes("india");
+    const isFem = femaleKeywords.some((kw) => name.includes(kw));
+    return isEnIn && isFem;
+  });
+  if (indianEngFemale) return indianEngFemale;
+
+  // 3. Any Indian English voice
+  const anyIndianEng = voices.find((v) => {
+    const name = (v.name || "").toLowerCase();
+    const lang = (v.lang || "").toLowerCase().replace("_", "-");
+    return lang.startsWith("en-in") || name.includes("india");
+  });
+  if (anyIndianEng) return anyIndianEng;
+
+  // 4. Any natural / female English voice
+  const anyFemale = voices.find((v) => {
+    const name = (v.name || "").toLowerCase();
+    return femaleKeywords.some((kw) => name.includes(kw));
+  });
+  if (anyFemale) return anyFemale;
+
+  return voices[0] || null;
+}
+
 export default function TutorChatPage() {
   const [searchParams] = useSearchParams();
   const subjectId = searchParams.get("subject_id");
@@ -156,7 +242,89 @@ export default function TutorChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [chatError, setChatError] = useState("");
   const [viewerMethod, setViewerMethod] = useState("direct"); // direct, google, mozilla
+  const [isPadHidden, setIsPadHidden] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [, setVoicesLoaded] = useState(false);
   const recognitionRef = useRef(null);
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    if (!window.speechSynthesis) return;
+
+    const onVoicesChanged = () => {
+      setVoicesLoaded(true);
+    };
+
+    window.speechSynthesis.onvoiceschanged = onVoicesChanged;
+    if (window.speechSynthesis.getVoices().length > 0) {
+      setVoicesLoaded(true);
+    }
+
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
+  const stopAll = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSending(false);
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+  };
+
+  const speak = (text) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+
+    const speechText = cleanTextForSpeech(text);
+    if (!speechText) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    const isHindi = getUserLanguage().startsWith("hi");
+    utterance.lang = isHindi ? "hi-IN" : "en-IN";
+    utterance.rate = 0.95; // Calm, clear natural teaching pace
+    utterance.pitch = 1.08; // Friendly, clear female pitch
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+    };
+
+    // Pick best matching Indian female voice
+    try {
+      const bestVoice = getBestIndianFemaleVoice(isHindi);
+      if (bestVoice) {
+        utterance.voice = bestVoice;
+        if (bestVoice.lang) utterance.lang = bestVoice.lang;
+      }
+    } catch {
+      // Use browser default voice
+    }
+
+    window.speechSynthesis.speak(utterance);
+  };
 
   useEffect(() => {
     let active = true;
@@ -232,37 +400,12 @@ export default function TutorChatPage() {
     return () => { active = false; };
   }, [selectedChapter]);
 
-  const speak = (text) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-
-    const speechText = cleanTextForSpeech(text);
-    if (!speechText) return;
-
-    const utterance = new SpeechSynthesisUtterance(speechText);
-    const isHindi = getUserLanguage().startsWith("hi");
-    utterance.lang = isHindi ? "hi-IN" : "en-IN";
-    utterance.rate = 0.95;
-    utterance.pitch = 1.0;
-
-    // Pick best matching available voice
-    try {
-      const voices = window.speechSynthesis.getVoices?.() || [];
-      if (voices.length > 0) {
-        const langPrefix = isHindi ? "hi" : "en";
-        const voice = voices.find((v) => v.lang?.toLowerCase().startsWith(langPrefix)) || voices[0];
-        if (voice) utterance.voice = voice;
-      }
-    } catch {
-      // Use browser default voice
-    }
-
-    window.speechSynthesis.speak(utterance);
-  };
-
   const send = async (message = draft) => {
     const question = message.trim();
     if (!question || isSending) return;
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     const userMessage = { from: "user", text: question };
     const nextMessages = [...messages, userMessage];
@@ -330,22 +473,26 @@ export default function TutorChatPage() {
         },
         language: getUserLanguage(),
         messages: nextMessages.map(({ from, text }) => ({ role: from === "ai" ? "assistant" : "user", content: text })),
-      });
+      }, { signal: controller.signal });
       const reply = getTutorReply(response);
       setMessages((current) => [...current, { from: "ai", text: reply }]);
       speak(reply);
     } catch (error) {
+      if (error.name === "AbortError" || error.message?.includes("aborted")) {
+        return;
+      }
       setChatError(error.message || "Unable to reach your AI tutor.");
     } finally {
       setIsSending(false);
+      abortControllerRef.current = null;
     }
   };
 
   const clearMessages = () => {
+    stopAll();
     setMessages([]);
     setDraft("");
     setChatError("");
-    window.speechSynthesis?.cancel();
   };
 
   const toggleVoiceInput = () => {
@@ -402,21 +549,35 @@ export default function TutorChatPage() {
 
   return (
     <div className="tutor-page">
-
-
-      <div className="tutor-workspace">                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <section className="tutor-reader">
+      <div className={`tutor-workspace ${isPadHidden ? "pad-hidden" : ""}`}>
+        <section className={`tutor-reader ${isPadHidden ? "is-hidden" : ""}`}>
           <div className="tutor-reader-toolbar">
-            <span>{chapter ? getChapterLabel(chapter, "Selected chapter") : "Selected chapter"}</span>
-            <div className="tutor-page-controls">
-              <button title="Previous page"><ChevronLeft size={15} /></button>
-              <span>Pg 112</span>
-              <button title="Next page"><ChevronRight size={15} /></button>
+            <div className="tutor-reader-title-group">
+              <BookOpen size={16} />
+              <span>{chapter ? getChapterLabel(chapter, "Selected chapter") : "Selected chapter"}</span>
+            </div>
+            <div className="tutor-reader-actions">
+              <div className="tutor-page-controls">
+                <button type="button" title="Previous page"><ChevronLeft size={15} /></button>
+                <span>Pg 112</span>
+                <button type="button" title="Next page"><ChevronRight size={15} /></button>
+              </div>
+              <button
+                type="button"
+                className="tutor-hide-pad-button"
+                onClick={() => setIsPadHidden(true)}
+                title="Hide Pad & Expand Chat Full Screen"
+                aria-label="Hide Pad and expand chat to full screen"
+              >
+                <PanelLeftClose size={14} />
+                <span>Hide Pad</span>
+              </button>
             </div>
           </div>
           <article className="tutor-paper">
             {chapterLoading && <p className="tutor-reader-status">Loading chapter PDF and extracting text...</p>}
             {!chapterLoading && (chapterError || chaptersError) && (
-              <p className="tutor-reader-status tutor-reader-error">{chapterError || chaptersError}</p>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+              <p className="tutor-reader-status tutor-reader-error">{chapterError || chaptersError}</p>
             )}
             {!chapterLoading && !chapterError && !chaptersError && chapter?.source_file_url && (
               <>
@@ -462,133 +623,208 @@ export default function TutorChatPage() {
                   <button 
                     onClick={() => setViewerMethod("direct")}
                     style={{ 
-                      padding: '6px 12px', 
-                      background: viewerMethod === "direct" ? '#e07a3f' : '#fff',
-                      color: viewerMethod === "direct" ? '#fff' : '#33405b',
-                      border: '1px solid #d7d1c2',
-                      borderRadius: '6px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Direct View
-                  </button>
-                  <button 
-                    onClick={() => setViewerMethod("google")}
-                    style={{ 
-                      padding: '6px 12px', 
-                      background: viewerMethod === "google" ? '#e07a3f' : '#fff',
-                      color: viewerMethod === "google" ? '#fff' : '#33405b',
-                      border: '1px solid #d7d1c2',
-                      borderRadius: '6px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Google Viewer
-                  </button>
-                  <button 
-                    onClick={() => setViewerMethod("mozilla")}
-                    style={{ 
-                      padding: '6px 12px', 
-                      background: viewerMethod === "mozilla" ? '#e07a3f' : '#fff',
-                      color: viewerMethod === "mozilla" ? '#fff' : '#33405b',
-                      border: '1px solid #d7d1c2',
-                      borderRadius: '6px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    PDF.js Viewer
-                  </button>
-                  <a 
-                    href={chapter.source_file_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    style={{ 
-                      padding: '6px 12px', 
-                      background: '#4c8b78',
-                      color: '#fff',
-                      border: '1px solid #4c8b78',
-                      borderRadius: '6px',
-                      textDecoration: 'none',
-                      display: 'inline-block'
-                    }}
-                  >
-                    Open in New Tab
-                  </a>
-                </div>
-              </>
-            )}
-            {!chapterLoading && !chapterError && !chaptersError && chapter && !chapter.source_file_url && (
-              <p className="tutor-reader-status">This chapter does not have a PDF available yet.</p>
-            )}
-            {!chapterLoading && !chapterError && !chaptersError && !chapter && (
-              <p className="tutor-reader-status">Select a chapter to open its PDF.</p>
-            )}
-          </article>
-        </section>
-
-        <aside className="tutor-chat">
-
-          <div className="tutor-picker">
-            <div className="tutor-picker-row">
-              <select
-                id="chapter-select"
-                className="tutor-chapter-select"
-                value={selectedChapter}
-                onChange={(event) => setSelectedChapter(event.target.value)}
-                disabled={chaptersLoading || chapters.length === 0}
-              >
-                <option value="">
-                  {chaptersLoading ? "Loading chapters..." : chaptersError || "No chapters found"}
-                </option>
-                {chapters.map((chapter, index) => (
-                  <option key={getChapterId(chapter, index + 1)} value={getChapterId(chapter, index + 1)}>
-                    {getChapterLabel(chapter, `Chapter ${index + 1}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {chaptersError && <p className="tutor-picker-error">{chaptersError}</p>}
-          </div>
-
-
-          <div className="tutor-messages">
-            {messages.map((m, i) => (
-              <div key={i} className={`tutor-message ${m.from === "user" ? "user-message" : "ai-message"}`}>
-                <div className="tutor-message-label">{m.from === "ai" ? "Adhyayan" : "You"}</div>
-                {m.from === "ai" ? (
-                  <div className="tutor-message-markdown">
-                    <ReactMarkdown>{m.text}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <div>{m.text}</div>
-                )}
-                {m.from === "ai" && (
-                  <button type="button" className="tutor-speak-message" onClick={() => speak(m.text)} title="Read answer aloud" aria-label="Read answer aloud">
-                    <Volume2 size={13} />
-                  </button>
-                )}
+                    padding: '6px 12px', 
+                    background: viewerMethod === "direct" ? '#e07a3f' : '#fff',
+                    color: viewerMethod === "direct" ? '#fff' : '#33405b',
+                    border: '1px solid #d7d1c2',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Direct View
+                </button>
+                <button 
+                  onClick={() => setViewerMethod("google")}
+                  style={{ 
+                    padding: '6px 12px', 
+                    background: viewerMethod === "google" ? '#e07a3f' : '#fff',
+                    color: viewerMethod === "google" ? '#fff' : '#33405b',
+                    border: '1px solid #d7d1c2',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Google Viewer
+                </button>
+                <button 
+                  onClick={() => setViewerMethod("mozilla")}
+                  style={{ 
+                    padding: '6px 12px', 
+                    background: viewerMethod === "mozilla" ? '#e07a3f' : '#fff',
+                    color: viewerMethod === "mozilla" ? '#fff' : '#33405b',
+                    border: '1px solid #d7d1c2',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  PDF.js Viewer
+                </button>
+                <a 
+                  href={chapter.source_file_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ 
+                    padding: '6px 12px', 
+                    background: '#4c8b78',
+                    color: '#fff',
+                    border: '1px solid #4c8b78',
+                    borderRadius: '6px',
+                    textDecoration: 'none',
+                    display: 'inline-block'
+                  }}
+                >
+                  Open in New Tab
+                </a>
               </div>
-            ))}
-            {isSending && <div className="tutor-message ai-message">Adhyayan is thinking...</div>}
+            </>
+          )}
+          {!chapterLoading && !chapterError && !chaptersError && chapter && !chapter.source_file_url && (
+            <p className="tutor-reader-status">This chapter does not have a PDF available yet.</p>
+          )}
+          {!chapterLoading && !chapterError && !chaptersError && !chapter && (
+            <p className="tutor-reader-status">Select a chapter to open its PDF.</p>
+          )}
+        </article>
+      </section>
+
+      <aside className={`tutor-chat ${isPadHidden ? "fullscreen" : ""}`}>
+        <div className="tutor-chat-header-bar">
+          <div className="tutor-picker-group">
+            <label htmlFor="chapter-select" className="tutor-picker-label">Chapter</label>
+            <select
+              id="chapter-select"
+              className="tutor-chapter-select"
+              value={selectedChapter}
+              onChange={(event) => setSelectedChapter(event.target.value)}
+              disabled={chaptersLoading || chapters.length === 0}
+            >
+              <option value="">
+                {chaptersLoading ? "Loading chapters..." : chaptersError || "No chapters found"}
+              </option>
+              {chapters.map((chapter, index) => (
+                <option key={getChapterId(chapter, index + 1)} value={getChapterId(chapter, index + 1)}>
+                  {getChapterLabel(chapter, `Chapter ${index + 1}`)}
+                </option>
+              ))}
+            </select>
           </div>
-          <button type="button" className="tutor-clear-chat" onClick={clearMessages} title="Clear chat" aria-label="Clear chat">
-            <Trash2 size={15} />
-            <span>Clear chat</span>
-          </button>
-          <div className="tutor-composer">
-            <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Apna doubt likhein..." className="tutor-message-input" disabled={isSending} />
-            <div className="tutor-composer-actions">
-              <button type="button" className={isListening ? "voice-active" : ""} title={isListening ? "Stop voice input" : "Voice input"} onClick={toggleVoiceInput} aria-label={isListening ? "Stop voice input" : "Voice input"}>
-                <Mic size={15} />
+
+          <div className="tutor-chat-header-actions">
+            {isPadHidden ? (
+              <button
+                type="button"
+                className="tutor-toggle-pad-btn tutor-toggle-pad-btn--show"
+                onClick={() => setIsPadHidden(false)}
+                title="Show Study Pad (Split View)"
+              >
+                <BookOpen size={14} />
+                <span>Show Pad</span>
               </button>
-              <button title="Attach photo"><Camera size={15} /></button>
-              <PrimaryButton onClick={() => send()} disabled={isSending}><Send size={15} color="white" /></PrimaryButton>
-            </div>
-            {voiceError && <p className="tutor-picker-error">{voiceError}</p>}
-            {chatError && <p className="tutor-picker-error">{chatError}</p>}
+            ) : (
+              <button
+                type="button"
+                className="tutor-toggle-pad-btn tutor-toggle-pad-btn--hide"
+                onClick={() => setIsPadHidden(true)}
+                title="Hide Pad & Expand Chat"
+              >
+                <Maximize2 size={14} />
+                <span>Full Screen Chat</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className={`tutor-stop-btn ${isSpeaking || isSending || isListening ? "tutor-stop-btn--active" : ""}`}
+              onClick={stopAll}
+              title="Stop voice, reading aloud, or AI response"
+              aria-label="Stop chat voice or AI response"
+            >
+              <Square size={13} fill="currentColor" />
+              <span>Stop</span>
+            </button>
+            <button
+              type="button"
+              className="tutor-clear-chat-btn"
+              onClick={clearMessages}
+              title="Clear chat"
+              aria-label="Clear chat"
+            >
+              <Trash2 size={14} />
+              <span>Clear Chat</span>
+            </button>
           </div>
-        </aside>
-      </div>
+        </div>
+        {chaptersError && <p className="tutor-picker-error" style={{ marginBottom: "10px" }}>{chaptersError}</p>}
+
+        <div className="tutor-messages">
+          {messages.map((m, i) => (
+            <div key={i} className={`tutor-message ${m.from === "user" ? "user-message" : "ai-message"}`}>
+              <div className="tutor-message-label">{m.from === "ai" ? "Adhyayan" : "You"}</div>
+              {m.from === "ai" ? (
+                <div className="tutor-message-markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {cleanMathFormatting(m.text)}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <div>{m.text}</div>
+              )}
+              {m.from === "ai" && (
+                <button
+                  type="button"
+                  className={`tutor-speak-message ${isSpeaking ? "is-speaking" : ""}`}
+                  onClick={() => (isSpeaking ? stopAll() : speak(m.text))}
+                  title={isSpeaking ? "Stop reading aloud" : "Read answer aloud"}
+                  aria-label={isSpeaking ? "Stop reading aloud" : "Read answer aloud"}
+                >
+                  {isSpeaking ? <VolumeX size={13} color="#b74d3d" /> : <Volume2 size={13} />}
+                </button>
+              )}
+            </div>
+          ))}
+          {isSending && <div className="tutor-message ai-message">Adhyayan is thinking...</div>}
+        </div>
+
+        <div className="tutor-composer">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            placeholder="Apna doubt likhein..."
+            className="tutor-message-input"
+            disabled={isSending}
+          />
+          <div className="tutor-composer-actions">
+            {(isSending || isSpeaking || isListening) && (
+              <button
+                type="button"
+                className="tutor-composer-stop-btn"
+                onClick={stopAll}
+                title="Stop AI voice / response"
+                aria-label="Stop AI voice or response"
+              >
+                <Square size={13} fill="currentColor" />
+                <span>Stop</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className={isListening ? "voice-active" : ""}
+              title={isListening ? "Stop voice input" : "Voice input"}
+              onClick={toggleVoiceInput}
+              aria-label={isListening ? "Stop voice input" : "Voice input"}
+            >
+              <Mic size={15} />
+            </button>
+            <button title="Attach photo" type="button"><Camera size={15} /></button>
+            <PrimaryButton onClick={() => send()} disabled={isSending}>
+              <Send size={15} color="white" />
+            </PrimaryButton>
+          </div>
+          {voiceError && <p className="tutor-picker-error">{voiceError}</p>}
+          {chatError && <p className="tutor-picker-error">{chatError}</p>}
+        </div>
+      </aside>
     </div>
+  </div>
   );
 }

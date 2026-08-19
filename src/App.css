@@ -35,8 +35,15 @@
 .tutor-picker-row { display: flex; align-items: center; gap: 12px; }
 .tutor-chapter-select { width: min(345px, 100%); min-height: 38px; padding: 8px 12px; color: #182746; background: #fff; border: 2px solid #e99b17; border-radius: 8px; font-size: 14px; }
 .tutor-picker-error { margin: 8px 0 0; color: #b74d3d; font-size: 12px; }
-.tutor-workspace { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 3fr); gap: 14px; }
-.tutor-reader-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; color: #33405b; font-size: 17px; }
+.tutor-workspace { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 3fr); gap: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.tutor-workspace.pad-hidden { display: block; }
+.tutor-reader { min-width: 0; transition: opacity 0.25s ease; }
+.tutor-reader.is-hidden { display: none !important; }
+.tutor-reader-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; color: #33405b; font-size: 16px; gap: 12px; flex-wrap: wrap; }
+.tutor-reader-title-group { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #182746; }
+.tutor-reader-actions { display: flex; align-items: center; gap: 10px; }
+.tutor-hide-pad-button { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; font-size: 12px; font-weight: 600; color: #55627a; background: #ffffff; border: 1px solid #d7d1c2; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
+.tutor-hide-pad-button:hover { background: #f0e9dc; color: #182746; border-color: #beb5a5; }
 .tutor-page-controls { display: flex; align-items: center; gap: 8px; color: #687083; font-size: 12px; }
 .tutor-page-controls button, .tutor-composer-actions button { display: inline-flex; align-items: center; justify-content: center; padding: 0; color: #33405b; background: #fff; border: 1px solid #d7d1c2; border-radius: 6px; }
 .tutor-page-controls button { width: 26px; height: 26px; }
@@ -52,21 +59,65 @@
 .tutor-theta { display: inline-block; padding: 2px 7px; color: #c87812; background: #fff0d4; border-radius: 5px; font-weight: 700; }
 .tutor-formula { max-width: 680px; margin: 16px 0; padding: 12px 14px; color: #182746; background: #fbf9f2; border-left: 3px solid #4c8b78; border-radius: 0 8px 8px 0; font-family: 'DM Mono', monospace; font-size: 13px; line-height: 1.45; }
 .tutor-hint { display: flex; align-items: center; gap: 6px; max-width: 680px; margin-top: 12px; padding: 8px 12px; color: #33405b; background: #dcede6; border-radius: 7px; font-size: 12px; }
-.tutor-chat { display: flex; flex-direction: column; min-height: 420px; }
+.tutor-chat { display: flex; flex-direction: column; min-height: 420px; transition: all 0.3s ease; }
+.tutor-chat.fullscreen { max-width: 1050px; width: 100%; margin: 0 auto; }
+.tutor-chat-header-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 12px; background: #ffffff; border: 1px solid #d7d1c2; border-radius: 10px; box-shadow: 0 1px 3px rgba(24,39,70,.03); flex-wrap: wrap; }
+.tutor-picker-group { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px; }
+.tutor-picker-label { font-size: 11px; font-weight: 700; color: #687083; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.tutor-chat-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tutor-toggle-pad-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; }
+.tutor-toggle-pad-btn--show { background: #e07a3f; color: #ffffff; box-shadow: 0 2px 6px rgba(224, 122, 63, 0.25); }
+.tutor-toggle-pad-btn--show:hover { background: #cf6e35; }
+.tutor-toggle-pad-btn--hide { background: #f5f2e9; color: #33405b; border-color: #d7d1c2; }
+.tutor-toggle-pad-btn--hide:hover { background: #eae4d5; color: #182746; }
+.tutor-stop-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; font-size: 12px; font-weight: 600; color: #687083; background: #ffffff; border: 1px solid #d7d1c2; border-radius: 7px; cursor: pointer; transition: all 0.2s ease; }
+.tutor-stop-btn:hover { color: #b74d3d; border-color: #e5b4ad; background: #fdf5f5; }
+.tutor-stop-btn--active { color: #ffffff !important; background: #d9483b !important; border-color: #d9483b !important; box-shadow: 0 0 0 2px rgba(217, 72, 59, 0.2), 0 2px 6px rgba(217, 72, 59, 0.3); animation: pulse-stop 1.6s infinite ease-in-out; }
+@keyframes pulse-stop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.tutor-composer-stop-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 72px; height: 40px; padding: 0 12px; color: #ffffff; background: #d9483b; border: 1px solid #d9483b; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(217, 72, 59, 0.25); }
+.tutor-composer-stop-btn:hover { background: #c33a2e; }
+.tutor-chat.fullscreen .tutor-composer-stop-btn { height: 46px; min-width: 82px; padding: 0 16px; font-size: 14px; }
+.tutor-clear-chat-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; font-size: 12px; font-weight: 500; color: #687083; background: #ffffff; border: 1px solid #d7d1c2; border-radius: 7px; cursor: pointer; transition: all 0.2s ease; }
+.tutor-clear-chat-btn:hover { color: #b74d3d; border-color: #e5b4ad; background: #fdf5f5; }
 .tutor-chat-label { margin: 0 0 8px; color: #687083; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.tutor-messages { flex: 0 0 420px; height: 420px; min-height: 0; padding: 10px 8px; overflow-y: auto; background: rgba(255,255,255,.42); border: 1px solid #d7d1c2; border-radius: 9px 9px 0 0; }
-.tutor-message { max-width: 95%; margin-bottom: 12px; padding: 9px 10px; color: #33405b; border-radius: 9px 9px 9px 0; font-size: 12px; line-height: 1.45; }
+.tutor-messages { flex: 0 0 420px; height: 420px; min-height: 0; padding: 12px 14px; overflow-y: auto; background: rgba(255,255,255,.42); border: 1px solid #d7d1c2; border-radius: 9px 9px 0 0; }
+.tutor-chat.fullscreen .tutor-messages { flex: 1; height: calc(100vh - 280px); min-height: 520px; padding: 22px 28px; border-radius: 12px; background: rgba(255,255,255,.7); box-shadow: 0 4px 20px rgba(24,39,70,.05); }
+.tutor-message { max-width: 95%; margin-bottom: 12px; padding: 9px 12px; color: #33405b; border-radius: 9px 9px 9px 0; font-size: 13px; line-height: 1.5; }
+.tutor-chat.fullscreen .tutor-message { max-width: 85%; font-size: 15.5px; line-height: 1.65; padding: 14px 18px; margin-bottom: 18px; border-radius: 12px; }
+.tutor-chat.fullscreen .user-message { border-radius: 14px 14px 2px 14px; }
+.tutor-chat.fullscreen .ai-message { border-radius: 14px 14px 14px 2px; }
+.tutor-chat.fullscreen .tutor-message-label { font-size: 11px; margin-bottom: 5px; letter-spacing: .06em; }
+.tutor-chat.fullscreen .tutor-message-markdown p { font-size: 15.5px; line-height: 1.7; margin: 10px 0; }
+.tutor-chat.fullscreen .tutor-message-markdown h1 { font-size: 22px; margin: 16px 0 10px; }
+.tutor-chat.fullscreen .tutor-message-markdown h2 { font-size: 19px; margin: 14px 0 8px; }
+.tutor-chat.fullscreen .tutor-message-markdown h3 { font-size: 17px; margin: 12px 0 6px; }
+.tutor-chat.fullscreen .tutor-message-markdown h4 { font-size: 16px; }
+.tutor-chat.fullscreen .tutor-message-markdown li { font-size: 15.5px; line-height: 1.65; margin: 6px 0; }
+.tutor-chat.fullscreen .tutor-message-markdown code { font-size: 14px; padding: 3px 8px; }
+.tutor-chat.fullscreen .tutor-message-markdown pre { font-size: 14px; padding: 14px 16px; margin: 14px 0; }
+.tutor-chat.fullscreen .tutor-message-markdown blockquote { font-size: 15.5px; padding: 10px 16px; margin: 14px 0; }
+.tutor-message-markdown table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; background: rgba(255, 255, 255, 0.65); border-radius: 8px; overflow: hidden; border: 1px solid #d7d1c2; }
+.tutor-chat.fullscreen .tutor-message-markdown table { font-size: 15px; margin: 16px 0; }
+.tutor-message-markdown th, .tutor-message-markdown td { padding: 8px 12px; border: 1px solid #d7d1c2; text-align: center; }
+.tutor-message-markdown th { background: #f4eee1; font-weight: 700; color: #182746; }
+.tutor-message-markdown tr:nth-child(even) td { background: rgba(255, 255, 255, 0.5); }
 .ai-message { background: #dcede6; }
 .user-message { margin-left: auto; color: #fff; background: #182746; border-radius: 9px 9px 0 9px; }
 .tutor-message-label { margin-bottom: 3px; opacity: .65; font-size: 9px; text-transform: uppercase; }
 .tutor-speak-message { display: inline-flex; align-items: center; justify-content: center; margin-top: 7px; padding: 3px; color: #687083; background: transparent; border: 0; cursor: pointer; }
 .tutor-speak-message:hover { color: #4c8b78; }
+.tutor-chat.fullscreen .tutor-speak-message { margin-top: 10px; padding: 5px; }
 .tutor-clear-chat { display: inline-flex; align-items: center; gap: 6px; align-self: flex-end; margin: 7px 0 0; padding: 5px 8px; color: #687083; background: transparent; border: 0; font-size: 11px; cursor: pointer; }
 .tutor-clear-chat:hover { color: #b74d3d; }
 .tutor-composer { padding-top: 10px; }
+.tutor-chat.fullscreen .tutor-composer { padding-top: 16px; }
 .tutor-message-input.form-control { min-height: 36px; padding: 8px 10px; border-radius: 8px; font-size: 12px; }
+.tutor-chat.fullscreen .tutor-message-input.form-control { min-height: 48px; font-size: 15.5px; padding: 10px 16px; border-radius: 10px; }
 .tutor-composer-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 7px; }
+.tutor-chat.fullscreen .tutor-composer-actions { margin-top: 10px; gap: 10px; }
 .tutor-composer-actions .button-medium { min-height: 40px; padding: 8px 12px; }
+.tutor-chat.fullscreen .tutor-composer-actions button { width: 46px; height: 46px; }
+.tutor-chat.fullscreen .tutor-composer-actions .button-medium { min-height: 46px; padding: 10px 18px; }
 .main-content h1, .main-content h2, .main-content h3 { color: #182746; font-family: 'Libre Baskerville', Georgia, serif; }
 .main-content h1 { font-size: 36px; line-height: 1.2; }
 .main-content h2 { font-size: 25px; }
@@ -712,3 +763,22 @@
   white-space: pre-wrap;
 }
 
+
+
+/* Subscription Guard Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
