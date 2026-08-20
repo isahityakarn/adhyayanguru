@@ -24,7 +24,7 @@
 .sidebar-collapsed .sidebar-logout { justify-content: center; padding: 12px 6px; }
 .sidebar-logout { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; color: #bfc4cf; background: transparent; border: 0; font-size: 14px; text-align: left; transition: background .2s, color .2s; }
 .sidebar-logout:hover { color: #fff; background: rgba(255,255,255,.08); }
-.main-scroll { flex: 1; overflow-y: auto; background-color: #fbf9f2; background-image: linear-gradient(rgba(78,74,64,.13) 1px, transparent 1px); background-size: 100% 56px; }
+.main-scroll { flex: 1; overflow-y: auto; background-color: #fbf9f2; }
 .main-content { width: 100%; padding: 42px 64px 80px; }
 .login-page { min-height: calc(100vh - 122px); width: 100%; }
 .tutor-page { min-height: calc(100vh - 122px); color: #182746; }

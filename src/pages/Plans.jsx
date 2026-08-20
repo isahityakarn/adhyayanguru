@@ -1,17 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, Crown, Zap, Star, Sparkles, ArrowLeft, Loader } from "lucide-react";
-import { Card, PrimaryButton } from "../components/UI";
+import { Card } from "../components/UI";
 import { c, headingFont, displayFont } from "../utils/theme";
 import { get, post } from "../utils/api";
+
+// Helper function to extract items from API response
+function getItems(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.results)) return response.results;
+  if (Array.isArray(response?.plans)) return response.plans;
+  return [];
+}
 
 export default function PlansPage() {
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [processing, setProcessing] = useState(false);
+  const [processingPlanId, setProcessingPlanId] = useState(null);
   const [userSubscription, setUserSubscription] = useState(null);
+  const [debugMode, setDebugMode] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -21,20 +31,95 @@ export default function PlansPage() {
   async function loadPlans() {
     try {
       setLoading(true);
-      const response = await get("/plans");
+      const plansEndpoint = import.meta.env.VITE_PLANS_ENDPOINT || "/plans";
+      const response = await get(plansEndpoint);
       
-      if (response && response.plans) {
-        // Sort plans by price
-        const sortedPlans = response.plans.sort((a, b) => a.price_inr - b.price_inr);
+      const plansData = getItems(response);
+
+      // Filter out Free Trial / Free plans (only show paid subscription plans)
+      const isPaidPlan = (plan) => {
+        const name = (plan.name || "").toLowerCase().trim();
+        return name !== "free trial" && !name.includes("free trial") && !name.includes("free") && Number(plan.price_inr) > 0;
+      };
+
+      const filteredPlansData = plansData.filter(isPaidPlan);
+
+      if (filteredPlansData.length > 0) {
+        const sortedPlans = filteredPlansData.sort((a, b) => a.price_inr - b.price_inr);
         setPlans(sortedPlans);
         
-        // Pre-select the middle plan (usually the most popular)
-        if (sortedPlans.length > 0) {
+        // Pre-select the middle/recommended plan
+        const middlePlan = sortedPlans[Math.floor(sortedPlans.length / 2)];
+        setSelectedPlan(middlePlan);
+      } else {
+        const rawPlans = (Array.isArray(response) ? response : []).filter(isPaidPlan);
+        
+        if (rawPlans.length > 0) {
+          const sortedPlans = rawPlans.sort((a, b) => a.price_inr - b.price_inr);
+          setPlans(sortedPlans);
           setSelectedPlan(sortedPlans[Math.floor(sortedPlans.length / 2)]);
+        } else {
+          // Fallback sample paid plans
+          const samplePlans = [
+            {
+              id: 1,
+              name: "1 Month Plan",
+              description: "Perfect for getting started",
+              price_inr: 299,
+              duration_days: 30,
+              features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Progress tracking"]
+            },
+            {
+              id: 2,
+              name: "6 Month Plan",
+              description: "Most popular choice",
+              price_inr: 1499,
+              duration_days: 180,
+              features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Detailed analytics", "Priority support"]
+            },
+            {
+              id: 3,
+              name: "12 Month Plan",
+              description: "Best value for full year mastery",
+              price_inr: 2499,
+              duration_days: 365,
+              features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Downloadable content", "Priority support", "30% savings"]
+            }
+          ];
+          setPlans(samplePlans);
+          setSelectedPlan(samplePlans[1]);
         }
       }
     } catch (error) {
       console.error("Failed to load plans:", error);
+      const samplePlans = [
+        {
+          id: 1,
+          name: "1 Month Plan",
+          description: "Perfect for getting started",
+          price_inr: 299,
+          duration_days: 30,
+          features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Progress tracking"]
+        },
+        {
+          id: 2,
+          name: "6 Month Plan",
+          description: "Most popular choice",
+          price_inr: 1499,
+          duration_days: 180,
+          features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Detailed analytics", "Priority support"]
+        },
+        {
+          id: 3,
+          name: "12 Month Plan",
+          description: "Best value for full year mastery",
+          price_inr: 2499,
+          duration_days: 365,
+          features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Downloadable content", "Priority support", "30% savings"]
+        }
+      ];
+      setPlans(samplePlans);
+      setSelectedPlan(samplePlans[1]);
     } finally {
       setLoading(false);
     }
@@ -51,22 +136,21 @@ export default function PlansPage() {
     }
   }
 
-  async function handlePayNow() {
-    if (!selectedPlan) {
+  async function handlePayNow(plan) {
+    if (!plan) {
       alert("Please select a plan first");
       return;
     }
 
     try {
-      setProcessing(true);
+      setProcessingPlanId(plan.id);
       
-      // Create subscription
       const response = await post("/subscriptions", {
-        plan_id: selectedPlan.id,
+        plan_id: plan.id,
       });
 
       if (response && response.subscription) {
-        alert(`✅ Successfully subscribed to ${selectedPlan.name}!\n\nYour subscription is now active for ${selectedPlan.duration_days} days.`);
+        alert(`✅ Successfully subscribed to ${plan.name}!\n\nYour subscription is now active for ${plan.duration_days} days.`);
         navigate("/dashboard");
       } else {
         alert("Payment processing... Please check your subscription status.");
@@ -75,7 +159,7 @@ export default function PlansPage() {
       console.error("Payment failed:", error);
       alert("Payment failed. Please try again or contact support.");
     } finally {
-      setProcessing(false);
+      setProcessingPlanId(null);
     }
   }
 
@@ -93,10 +177,11 @@ export default function PlansPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center" style={{ minHeight: '60vh' }}>
+      <div className="flex flex-col items-center justify-center" style={{ minHeight: '60vh' }}>
         <div className="text-center">
           <Loader size={40} color={c.primary} className="animate-spin mx-auto mb-4" />
-          <p style={{ color: c.gray }}>Loading plans...</p>
+          <p style={{ color: c.primary }} className="font-semibold mb-2">Loading Plans...</p>
+          <p className="text-xs" style={{ color: c.gray }}>Fetching available subscription plans</p>
         </div>
       </div>
     );
@@ -104,27 +189,93 @@ export default function PlansPage() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Back Button */}
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'transparent',
-          border: 'none',
-          color: c.gray,
-          cursor: 'pointer',
-          marginBottom: '24px',
-          fontSize: '14px',
-          fontWeight: '600',
-        }}
-        onMouseEnter={(e) => e.target.style.color = c.primary}
-        onMouseLeave={(e) => e.target.style.color = c.gray}
-      >
-        <ArrowLeft size={18} />
-        Back
-      </button>
+      {/* Top Navigation / Back */}
+      <div className="flex justify-between items-center mb-4">
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'transparent',
+            border: 'none',
+            color: c.gray,
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+          }}
+          onMouseEnter={(e) => e.target.style.color = c.primary}
+          onMouseLeave={(e) => e.target.style.color = c.gray}
+        >
+          <ArrowLeft size={18} />
+          Back
+        </button>
+
+        <button
+          onClick={() => setDebugMode(!debugMode)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: debugMode ? c.warning : c.lighterGray,
+            color: debugMode ? c.white : c.gray,
+            border: 'none',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: '600',
+            cursor: 'pointer',
+          }}
+        >
+          {debugMode ? '🔧 Debug Mode ON' : '🔧 Debug Mode OFF'}
+        </button>
+      </div>
+
+      {debugMode && (
+        <Card className="mb-6" style={{ background: c.lighterGray, border: `2px solid ${c.warning}` }}>
+          <div className="text-center">
+            <h4 className="text-sm font-bold mb-2" style={{ color: c.warning }}>
+              Debug Information
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-left">
+              <div className="text-xs">
+                <strong>Plans Count:</strong> {plans.length}
+              </div>
+              <div className="text-xs">
+                <strong>Selected Plan:</strong> {selectedPlan ? selectedPlan.name : 'None'}
+              </div>
+              <div className="text-xs">
+                <strong>API Base URL:</strong> {import.meta.env.VITE_API_BASE_URL}
+              </div>
+              <div className="text-xs">
+                <strong>Plans Endpoint:</strong> {import.meta.env.VITE_PLANS_ENDPOINT || "/plans"}
+              </div>
+              <div className="col-span-2 text-xs">
+                <strong>Plans JSON:</strong>
+                <pre className="text-xs mt-1 overflow-auto" style={{ maxHeight: '100px' }}>
+                  {JSON.stringify(plans, null, 2)}
+                </pre>
+              </div>
+            </div>
+            <button
+              onClick={loadPlans}
+              style={{
+                background: c.primary,
+                color: c.white,
+                padding: '6px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                marginTop: '10px',
+              }}
+            >
+              Reload Plans Data
+            </button>
+          </div>
+        </Card>
+      )}
 
       {/* Header Section */}
       <div className="text-center mb-12">
@@ -134,7 +285,7 @@ export default function PlansPage() {
         }}>
           <Sparkles size={16} color={c.primary} />
           <span className="text-xs font-bold" style={{ color: c.primary }}>
-            CHOOSE YOUR PLAN
+            UPGRADE YOUR LEARNING
           </span>
           <Sparkles size={16} color={c.primary} />
         </div>
@@ -144,12 +295,27 @@ export default function PlansPage() {
           color: c.dark,
           lineHeight: '1.2',
         }}>
-          Unlock Your Learning Potential
+          Choose the Perfect Plan
         </h1>
 
         <p className="text-lg md:text-xl mb-2" style={{ color: c.gray, maxWidth: '700px', margin: '0 auto' }}>
-          Choose the perfect plan for your educational journey
+          Select a subscription plan tailored to your study schedule and academic goals
         </p>
+
+        <div className="flex flex-wrap gap-3 justify-center mt-4">
+          <div className="text-xs px-3 py-1 rounded-full" style={{ 
+            background: plans.length > 0 ? `${c.success}15` : `${c.warning}15`, 
+            color: plans.length > 0 ? c.success : c.warning 
+          }}>
+            {plans.length > 0 ? `${plans.length} Plans Available` : 'No Plans Found'}
+          </div>
+          <div className="text-xs px-3 py-1 rounded-full" style={{ background: `${c.accent}15`, color: c.accent }}>
+            Instant Activation
+          </div>
+          <div className="text-xs px-3 py-1 rounded-full" style={{ background: `${c.secondary}15`, color: c.secondary }}>
+            24/7 AI Tutor Access
+          </div>
+        </div>
 
         {userSubscription && (
           <div className="mt-6 inline-block px-4 py-2 rounded-lg" style={{ 
@@ -157,20 +323,21 @@ export default function PlansPage() {
             border: `1px solid ${c.accent}30`,
           }}>
             <p className="text-sm" style={{ color: c.accent }}>
-              Current Plan: <strong>{userSubscription.plan?.name || "Free"}</strong> • 
+              Current Plan: <strong>{userSubscription.plan?.name || "Active"}</strong> • 
               Expires: {new Date(userSubscription.end_date).toLocaleDateString()}
             </p>
           </div>
         )}
       </div>
 
-      {/* Plans Grid */}
+      {/* Plans Grid - Single Selection */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         {plans.map((plan, index) => {
           const Icon = getPlanIcon(index);
           const planColor = getPlanColor(index);
-          const isPopular = index === Math.floor(plans.length / 2);
+          const isPopular = index === Math.floor(plans.length / 2); // Middle plan is popular
           const isSelected = selectedPlan?.id === plan.id;
+          const isProcessing = processingPlanId === plan.id;
 
           return (
             <div
@@ -180,7 +347,7 @@ export default function PlansPage() {
                 position: 'relative',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                transform: isSelected ? 'scale(1.02)' : 'scale(1)',
               }}
             >
               {/* Popular Badge */}
@@ -218,6 +385,25 @@ export default function PlansPage() {
                     : '0 2px 8px rgba(0,0,0,0.05)',
                 }}
               >
+                {/* Radio / Selection Indicator */}
+                <div className="flex justify-end mb-3">
+                  <div
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      border: `2px solid ${isSelected ? planColor : c.lightGray}`,
+                      background: isSelected ? planColor : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    {isSelected && <Check size={14} color={c.white} strokeWidth={3} />}
+                  </div>
+                </div>
+
                 {/* Plan Icon */}
                 <div className="mb-6">
                   <div 
@@ -264,7 +450,7 @@ export default function PlansPage() {
 
                 {/* Features */}
                 <div className="space-y-3 mb-6">
-                  {plan.features && plan.features.map((feature, idx) => (
+                  {plan.features && (Array.isArray(plan.features) ? plan.features : []).map((feature, idx) => (
                     <div key={idx} className="flex items-start gap-3">
                       <div 
                         className="flex-shrink-0 mt-0.5"
@@ -287,38 +473,65 @@ export default function PlansPage() {
                   ))}
                 </div>
 
-                {/* Select Button */}
+                {/* Select / Pay Button */}
                 <button
-                  onClick={() => setSelectedPlan(plan)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isSelected) {
+                      handlePayNow(plan);
+                    } else {
+                      setSelectedPlan(plan);
+                    }
+                  }}
+                  disabled={isProcessing}
                   style={{
                     width: '100%',
                     padding: '14px',
                     borderRadius: '12px',
-                    border: 'none',
+                    border: isSelected ? 'none' : `2px solid ${c.lightGray}`,
                     background: isSelected 
                       ? `linear-gradient(135deg, ${planColor} 0%, ${planColor}dd 100%)`
-                      : c.lighterGray,
+                      : c.white,
                     color: isSelected ? c.white : c.dark,
                     fontSize: '16px',
                     fontWeight: '700',
-                    cursor: 'pointer',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
                     transition: 'all 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    boxShadow: isSelected ? `0 4px 15px ${planColor}40` : 'none',
                     ...headingFont,
                   }}
                   onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      e.target.style.background = `${planColor}20`;
+                    if (!isSelected && !isProcessing) {
+                      e.target.style.background = `${planColor}15`;
                       e.target.style.color = planColor;
+                      e.target.style.borderColor = planColor;
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      e.target.style.background = c.lighterGray;
+                    if (!isSelected && !isProcessing) {
+                      e.target.style.background = c.white;
                       e.target.style.color = c.dark;
+                      e.target.style.borderColor = c.lightGray;
                     }
                   }}
                 >
-                  {isSelected ? '✓ Selected' : 'Select Plan'}
+                  {isProcessing ? (
+                    <>
+                      <Loader size={20} className="animate-spin" />
+                      Processing...
+                    </>
+                  ) : isSelected ? (
+                    <>
+                      <Crown size={20} />
+                      Pay Now (₹{plan.price_inr})
+                    </>
+                  ) : (
+                    "Select Plan"
+                  )}
                 </button>
               </Card>
             </div>
@@ -326,94 +539,101 @@ export default function PlansPage() {
         })}
       </div>
 
-      {/* Payment Section */}
+      {/* Summary / Checkout Card */}
       {selectedPlan && (
         <Card style={{
-          background: `linear-gradient(135deg, ${c.primary}05 0%, ${c.accent}05 100%)`,
+          background: `linear-gradient(135deg, ${c.primary}08 0%, ${c.accent}08 100%)`,
           border: `2px solid ${c.primary}30`,
-          maxWidth: '600px',
-          margin: '0 auto',
+          maxWidth: '700px',
+          margin: '0 auto 40px',
+          textAlign: 'center',
+          padding: '24px',
         }}>
-          <div className="text-center">
-            <h3 className="text-xl font-bold mb-3" style={{ ...headingFont, color: c.dark }}>
-              Ready to Subscribe?
-            </h3>
-            
-            <div className="mb-6">
-              <p className="text-sm mb-2" style={{ color: c.gray }}>
-                You've selected:
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-left">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: c.primary }}>
+                Selected Plan
+              </span>
+              <h3 className="text-2xl font-bold" style={{ ...headingFont, color: c.dark }}>
+                {selectedPlan.name}
+              </h3>
+              <p className="text-xs mt-1" style={{ color: c.gray }}>
+                Full access for {selectedPlan.duration_days} days • ₹{selectedPlan.price_inr}
               </p>
-              <div className="inline-block px-6 py-3 rounded-lg" style={{ 
-                background: c.white,
-                border: `2px solid ${getPlanColor(plans.indexOf(selectedPlan))}`,
-              }}>
-                <div className="text-lg font-bold" style={{ color: c.dark }}>
-                  {selectedPlan.name}
-                </div>
-                <div className="text-2xl font-bold" style={{ 
-                  ...displayFont, 
-                  color: getPlanColor(plans.indexOf(selectedPlan)) 
-                }}>
-                  ₹{selectedPlan.price_inr}
-                </div>
-                <div className="text-xs" style={{ color: c.gray }}>
-                  Valid for {selectedPlan.duration_days} days
-                </div>
-              </div>
             </div>
 
             <button
-              onClick={handlePayNow}
-              disabled={processing}
+              onClick={() => handlePayNow(selectedPlan)}
+              disabled={processingPlanId === selectedPlan.id}
               style={{
-                background: processing 
-                  ? c.gray
-                  : `linear-gradient(135deg, ${c.primary} 0%, ${c.primaryDark} 100%)`,
-                color: c.white,
-                padding: '18px 60px',
-                borderRadius: '14px',
+                padding: '14px 28px',
+                borderRadius: '12px',
                 border: 'none',
-                fontSize: '20px',
+                background: processingPlanId === selectedPlan.id
+                  ? c.gray
+                  : `linear-gradient(135deg, ${c.primary} 0%, ${c.accent} 100%)`,
+                color: c.white,
+                fontSize: '16px',
                 fontWeight: '700',
-                cursor: processing ? 'not-allowed' : 'pointer',
-                boxShadow: processing ? 'none' : `0 10px 30px ${c.primary}40`,
+                cursor: processingPlanId === selectedPlan.id ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '12px',
-                opacity: processing ? 0.6 : 1,
+                justifyContent: 'center',
+                gap: '10px',
+                boxShadow: `0 4px 15px ${c.primary}40`,
                 ...headingFont,
               }}
-              onMouseEnter={(e) => {
-                if (!processing) {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = `0 15px 40px ${c.primary}60`;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!processing) {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = `0 10px 30px ${c.primary}40`;
-                }
-              }}
             >
-              {processing ? (
+              {processingPlanId === selectedPlan.id ? (
                 <>
-                  <Loader size={24} className="animate-spin" />
+                  <Loader size={20} className="animate-spin" />
                   Processing...
                 </>
               ) : (
                 <>
-                  <Crown size={24} />
-                  Pay Now
-                  <Sparkles size={20} />
+                  <Crown size={20} />
+                  Pay Now (₹{selectedPlan.price_inr})
                 </>
               )}
             </button>
+          </div>
+        </Card>
+      )}
 
-            <p className="text-xs mt-4" style={{ color: c.gray }}>
-              🔒 Secure payment • Cancel anytime • 100% satisfaction guaranteed
+      {/* Debug/Reload Section - For Development */}
+      {plans.length === 0 && (
+        <Card className="mb-8" style={{ 
+          background: `linear-gradient(135deg, ${c.warning}15 0%, ${c.warning}05 100%)`,
+          border: `2px solid ${c.warning}`,
+        }}>
+          <div className="text-center">
+            <h3 className="text-lg font-bold mb-3" style={{ ...headingFont, color: c.warning }}>
+              No Plans Found
+            </h3>
+            <p className="text-sm mb-4" style={{ color: c.gray }}>
+              The API might not be responding or there are no paid plans in the database.
             </p>
+            <button
+              onClick={loadPlans}
+              style={{
+                background: c.warning,
+                color: c.white,
+                padding: '10px 24px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                ...headingFont,
+              }}
+            >
+              <Loader size={16} />
+              Reload Plans
+            </button>
           </div>
         </Card>
       )}
@@ -421,9 +641,9 @@ export default function PlansPage() {
       {/* Bottom Features */}
       <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { icon: "🎯", title: "Personalized Learning", desc: "AI-powered content tailored to your needs" },
-          { icon: "💬", title: "24/7 AI Tutor", desc: "Get instant help whenever you need it" },
-          { icon: "📊", title: "Track Progress", desc: "Detailed analytics and performance insights" },
+          { icon: "🎯", title: "Personalized Learning", desc: "AI-powered content tailored to your syllabus and goals" },
+          { icon: "💬", title: "24/7 AI Tutor", desc: "Get instant step-by-step guidance whenever you need help" },
+          { icon: "📊", title: "Track Progress", desc: "Comprehensive chapter-wise analytics and performance insights" },
         ].map((feature, idx) => (
           <div key={idx} className="text-center">
             <div className="text-4xl mb-3">{feature.icon}</div>
