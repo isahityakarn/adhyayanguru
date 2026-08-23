@@ -22,6 +22,12 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
+    if (response.status === 401 && token) {
+      localStorage.removeItem("studyyodha_token");
+      localStorage.removeItem("studyyodha_user");
+      localStorage.removeItem("studyyodha_user_role");
+      window.location.assign("/login");
+    }
     const error = new Error(errorBody?.message || `Request failed with status ${response.status}`);
     error.errors = errorBody?.errors || {};
     throw error;
@@ -60,5 +66,27 @@ export function put(path, body, options = {}) {
 
 export function del(path, options = {}) {
   return request(path, { ...options, method: "DELETE" });
+}
+
+export async function downloadFile(path) {
+  const token = getAuthToken();
+  const response = await fetch(buildUrl(path), {
+    headers: { Accept: "application/pdf, application/zip", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "download";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function getFileUrl(path) {
+  const token = getAuthToken();
+  const response = await fetch(buildUrl(path), { headers: { Accept: "application/pdf", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+  if (!response.ok) throw new Error(`Preview failed with status ${response.status}`);
+  return URL.createObjectURL(await response.blob());
 }
 

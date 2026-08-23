@@ -21,9 +21,8 @@ function AdminRoute({ children }) {
 }
 
 function StudentRoute({ children }) {
-  const role = localStorage.getItem("studyyodha_user_role");
   const token = localStorage.getItem("studyyodha_token");
-  const isAuthenticated = role === "student" || role === "admin" || Boolean(token);
+  const isAuthenticated = Boolean(token);
   return isAuthenticated
     ? children
     : <Navigate to="/login" replace />;

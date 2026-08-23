@@ -2,9 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Square, BookOpen, Maximize2, PanelLeftClose } from "lucide-react";
+import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Square, BookOpen, Maximize2, PanelLeftClose, Settings, RefreshCw, X, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Input, PrimaryButton } from "../components/UI";
+import { speakText, stopSpeech, previewVoice, AVAILABLE_VOICES } from "../utils/coquiTts";
 import { get, post } from "../utils/api";
+
+
+
+
+
+
 
 function cleanMathFormatting(text) {
   if (!text || typeof text !== "string") return "";
@@ -168,68 +175,49 @@ function getChapterContent(chapter) {
     ?? null;
 }
 
-function getBestIndianFemaleVoice(isHindi = true) {
+const femaleKeywords = [
+  "female", "woman", "swara", "kalpana", "neerja", "heera",
+  "veena", "lekha", "kajal", "aditi", "pooja", "priya",
+  "raveena", "zira", "natural", "online", "neural"
+];
+
+const realisticVoiceKeywords = [
+  "natural", "neural", "online", "premium", "enhanced", "wavenet",
+  "journey", "multilingual", "google", "microsoft", "edge"
+];
+
+function getBestIndianFemaleVoice() {
   if (typeof window === "undefined" || !window.speechSynthesis) return null;
   const voices = window.speechSynthesis.getVoices?.() || [];
   if (!voices || voices.length === 0) return null;
 
-  const femaleKeywords = [
-    "female", "woman", "swara", "kalpana", "neerja", "heera",
-    "veena", "lekha", "kajal", "aditi", "pooja", "priya",
-    "raveena", "zira", "natural", "online", "neural"
-  ];
+  const scoredVoices = voices.map((voice) => {
+    const name = voice.name.toLowerCase();
+    const language = (voice.lang || "").toLowerCase().replace("_", "-");
+    const isHindi = language.startsWith("hi") || name.includes("hindi");
+    const isOnline = voice.localService === false;
+    const realisticScore = realisticVoiceKeywords.filter((keyword) => name.includes(keyword)).length;
+    const femaleScore = femaleKeywords.filter((keyword) => name.includes(keyword)).length;
 
-  // 1. Prioritize Hindi female voice (e.g. Swara, Kalpana, Lekha, Google हिन्दी)
-  if (isHindi) {
-    const hindiFemale = voices.find((v) => {
-      const name = (v.name || "").toLowerCase();
-      const lang = (v.lang || "").toLowerCase().replace("_", "-");
-      const isHi = lang.startsWith("hi");
-      const isFem = femaleKeywords.some((kw) => name.includes(kw));
-      return isHi && isFem;
-    });
-    if (hindiFemale) return hindiFemale;
-
-    const anyHindi = voices.find((v) => {
-      const lang = (v.lang || "").toLowerCase().replace("_", "-");
-      return lang.startsWith("hi");
-    });
-    if (anyHindi) return anyHindi;
-  }
-
-  // 2. Prioritize Indian English female voice (e.g. Neerja, Heera, Veena, Kajal, etc.)
-  const indianEngFemale = voices.find((v) => {
-    const name = (v.name || "").toLowerCase();
-    const lang = (v.lang || "").toLowerCase().replace("_", "-");
-    const isEnIn = lang === "en-in" || lang.startsWith("en-in") || name.includes("india");
-    const isFem = femaleKeywords.some((kw) => name.includes(kw));
-    return isEnIn && isFem;
+    return {
+      voice,
+      score: (isHindi ? 100 : 0) + (isOnline ? 40 : 0) + realisticScore * 20 + femaleScore * 5,
+    };
   });
-  if (indianEngFemale) return indianEngFemale;
 
-  // 3. Any Indian English voice
-  const anyIndianEng = voices.find((v) => {
-    const name = (v.name || "").toLowerCase();
-    const lang = (v.lang || "").toLowerCase().replace("_", "-");
-    return lang.startsWith("en-in") || name.includes("india");
-  });
-  if (anyIndianEng) return anyIndianEng;
-
-  // 4. Any natural / female English voice
-  const anyFemale = voices.find((v) => {
-    const name = (v.name || "").toLowerCase();
-    return femaleKeywords.some((kw) => name.includes(kw));
-  });
-  if (anyFemale) return anyFemale;
-
-  return voices[0] || null;
+  return scoredVoices.sort((first, second) => second.score - first.score)[0]?.voice || null;
 }
 
 export default function TutorChatPage() {
   const [searchParams] = useSearchParams();
   const subjectId = searchParams.get("subject_id");
+  const [subjects, setSubjects] = useState([]);
+  const [selectedSubject, setSelectedSubject] = useState(subjectId || "");
   const [chapters, setChapters] = useState([]);
   const [selectedChapter, setSelectedChapter] = useState("");
+  const [chapterProgress, setChapterProgress] = useState(null);
+  const [completedChapterIds, setCompletedChapterIds] = useState(new Set());
+  const [hideCompleted, setHideCompleted] = useState(false);
   const [chaptersLoading, setChaptersLoading] = useState(true);
   const [chaptersError, setChaptersError] = useState("");
   const [chapter, setChapter] = useState(null);
@@ -244,34 +232,182 @@ export default function TutorChatPage() {
   const [viewerMethod, setViewerMethod] = useState("direct"); // direct, google, mozilla
   const [isPadHidden, setIsPadHidden] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [, setVoicesLoaded] = useState(false);
+  const [ttsEngine, setTtsEngine] = useState("browser");
+  const [selectedVoiceId, setSelectedVoiceId] = useState("browser_hindi_male");
+  const [previewingVoiceId, setPreviewingVoiceId] = useState(null);
+  const [showTtsModal, setShowTtsModal] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState(null);
   const recognitionRef = useRef(null);
   const abortControllerRef = useRef(null);
 
+  // Fetch student's completed chapters
   useEffect(() => {
-    if (!window.speechSynthesis) return;
-
-    const onVoicesChanged = () => {
-      setVoicesLoaded(true);
-    };
-
-    window.speechSynthesis.onvoiceschanged = onVoicesChanged;
-    if (window.speechSynthesis.getVoices().length > 0) {
-      setVoicesLoaded(true);
-    }
-
-    return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = null;
+    let active = true;
+    async function loadAllProgress() {
+      try {
+        let summaryRes = null;
+        try {
+          summaryRes = await get("/progress/parent-report");
+        } catch (e1) {
+          try {
+            summaryRes = await get("/progress/summary");
+          } catch (e2) {
+            // progress API not deployed on remote backend yet
+          }
+        }
+        if (active && summaryRes?.chapters) {
+          const completedSet = new Set(
+            summaryRes.chapters
+              .filter((c) => c.status === "completed" || c.percent_complete >= 100)
+              .map((c) => String(c.chapter_id))
+          );
+          setCompletedChapterIds(completedSet);
+        }
+      } catch (err) {
+        // silent catch
       }
-    };
+    }
+    loadAllProgress();
+    return () => { active = false; };
   }, []);
 
-  const stopAll = () => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+  // Chapter time tracking effect
+  useEffect(() => {
+    if (!selectedChapter) {
+      setChapterProgress(null);
+      return;
     }
+
+    let active = true;
+
+    async function fetchProgress() {
+      try {
+        const res = await get(`/progress/chapter/${selectedChapter}`);
+        if (active && res?.progress) {
+          setChapterProgress(res.progress);
+          if (res.progress.status === "completed" || res.progress.percent_complete >= 100) {
+            setCompletedChapterIds((prev) => new Set([...prev, String(selectedChapter)]));
+          }
+        }
+      } catch (e) {
+        // quiet catch
+      }
+    }
+
+    fetchProgress();
+
+    // Heartbeat every 10 seconds to log active study time
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await post('/progress/track-time', {
+          chapter_id: selectedChapter,
+          seconds: 10,
+        });
+        if (active && res?.progress) {
+          setChapterProgress(res.progress);
+        }
+      } catch (err) {
+        // silent catch
+      }
+    }, 10000);
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [selectedChapter]);
+
+  const markChapterCompleted = async () => {
+    if (!selectedChapter) return;
+    try {
+      const res = await post('/progress/update', {
+        chapter_id: selectedChapter,
+        status: 'completed',
+        percent_complete: 100,
+      });
+      if (res?.progress) {
+        setChapterProgress(res.progress);
+        const updatedSet = new Set(completedChapterIds);
+        const doneId = String(selectedChapter);
+        updatedSet.add(doneId);
+        setCompletedChapterIds(updatedSet);
+
+        // If hideCompleted is true, auto select next uncompleted chapter
+        if (hideCompleted) {
+          const remaining = chapters.filter((c, idx) => {
+            const cid = String(getChapterId(c, idx + 1));
+            return !updatedSet.has(cid);
+          });
+          if (remaining.length > 0) {
+            setSelectedChapter(String(getChapterId(remaining[0], 1)));
+          } else {
+            setSelectedChapter("");
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to mark chapter complete", err);
+    }
+  };
+
+  const displayedChapters = chapters.filter((ch, index) => {
+    const chId = String(getChapterId(ch, index + 1));
+    if (hideCompleted && completedChapterIds.has(chId)) {
+      return false;
+    }
+    return true;
+  });
+
+  const isSelectedChapterCompleted = selectedChapter
+    ? (completedChapterIds.has(String(selectedChapter)) || chapterProgress?.status === "completed")
+    : false;
+
+  useEffect(() => {
+    if (subjectId) {
+      setSelectedSubject(subjectId);
+    }
+  }, [subjectId]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadSubjects() {
+      try {
+        const response = await get("/subjects");
+        const list = response?.subjects || response?.data || (Array.isArray(response) ? response : []);
+        if (active && Array.isArray(list) && list.length > 0) {
+          setSubjects(list);
+          if (!subjectId && !selectedSubject) {
+            setSelectedSubject(String(list[0].id));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load subjects", err);
+      }
+    }
+    loadSubjects();
+    return () => { active = false; };
+  }, []);
+
+  const handlePlayVoicePreview = async (voice) => {
+    setPreviewingVoiceId(voice.id);
+    await previewVoice(voice, voice.sampleText, {
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => {
+        setIsSpeaking(false);
+        setPreviewingVoiceId(null);
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        setPreviewingVoiceId(null);
+      }
+    });
+  };
+
+  const stopAll = () => {
+    stopSpeech();
     setIsSpeaking(false);
+    setPreviewingVoiceId(null);
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -287,64 +423,44 @@ export default function TutorChatPage() {
   };
 
   const speak = (text) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-
-    const speechText = cleanTextForSpeech(text);
-    if (!speechText) {
-      setIsSpeaking(false);
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(speechText);
-    const isHindi = getUserLanguage().startsWith("hi");
-    utterance.lang = isHindi ? "hi-IN" : "en-IN";
-    utterance.rate = 0.95; // Calm, clear natural teaching pace
-    utterance.pitch = 1.08; // Friendly, clear female pitch
-
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-    };
-    utterance.onend = () => {
-      setIsSpeaking(false);
-    };
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-    };
-
-    // Pick best matching Indian female voice
-    try {
-      const bestVoice = getBestIndianFemaleVoice(isHindi);
-      if (bestVoice) {
-        utterance.voice = bestVoice;
-        if (bestVoice.lang) utterance.lang = bestVoice.lang;
-      }
-    } catch {
-      // Use browser default voice
-    }
-
-    window.speechSynthesis.speak(utterance);
+    const activeVoice = AVAILABLE_VOICES.find(v => v.id === selectedVoiceId) || AVAILABLE_VOICES[0];
+    speakText(text, {
+      engine: activeVoice.engine,
+      speaker: activeVoice.speaker,
+      language: getUserLanguage(),
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
   };
 
   useEffect(() => {
     let active = true;
 
     async function loadChapters() {
-      if (!subjectId) {
-        setChaptersError("No subject selected.");
-        setChaptersLoading(false);
-        return;
-      }
+      const activeSubjectId = selectedSubject || subjectId;
+      setChaptersLoading(true);
+      setChaptersError("");
 
       try {
-        const response = await get(`/chapters?subject_id=${encodeURIComponent(subjectId)}`);
+        const endpoint = activeSubjectId
+          ? `/chapters?subject_id=${encodeURIComponent(activeSubjectId)}`
+          : "/chapters";
+        const response = await get(endpoint);
         const items = getItems(response);
         if (active) {
           setChapters(items);
-          setSelectedChapter(items.length ? String(getChapterId(items[0], 1)) : "");
+          if (items.length > 0) {
+            setSelectedChapter((prev) => {
+              const exists = items.some(ch => String(getChapterId(ch, "")) === String(prev));
+              return exists ? prev : String(getChapterId(items[0], 1));
+            });
+          } else {
+            setSelectedChapter("");
+          }
         }
       } catch (error) {
-        if (active) setChaptersError(error.message);
+        if (active) setChaptersError(error.message || "Failed to load chapters");
       } finally {
         if (active) setChaptersLoading(false);
       }
@@ -352,7 +468,7 @@ export default function TutorChatPage() {
 
     loadChapters();
     return () => { active = false; };
-  }, [subjectId]);
+  }, [subjectId, selectedSubject]);
 
   useEffect(() => {
     let active = true;
@@ -557,6 +673,39 @@ export default function TutorChatPage() {
               <span>{chapter ? getChapterLabel(chapter, "Selected chapter") : "Selected chapter"}</span>
             </div>
             <div className="tutor-reader-actions">
+              {chapterProgress && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#f1f5f9',
+                  padding: '4px 10px',
+                  borderRadius: '16px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: '#0f172a',
+                  border: '1px solid #cbd5e1'
+                }}>
+                  <span>⏱️ {chapterProgress.formatted_time_spent || '0s'} studied</span>
+                  <button
+                    type="button"
+                    onClick={markChapterCompleted}
+                    style={{
+                      background: chapterProgress.status === 'completed' ? '#059669' : '#e07a3f',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                    title="Click to mark this chapter as completed"
+                  >
+                    {chapterProgress.status === 'completed' ? '✓ Completed' : 'Mark Complete'}
+                  </button>
+                </div>
+              )}
               <div className="tutor-page-controls">
                 <button type="button" title="Previous page"><ChevronLeft size={15} /></button>
                 <span>Pg 112</span>
@@ -690,26 +839,137 @@ export default function TutorChatPage() {
       <aside className={`tutor-chat ${isPadHidden ? "fullscreen" : ""}`}>
         <div className="tutor-chat-header-bar">
           <div className="tutor-picker-group">
+            {subjects.length > 0 && (
+              <>
+                <label htmlFor="subject-select" className="tutor-picker-label">Subject</label>
+                <select
+                  id="subject-select"
+                  className="tutor-chapter-select"
+                  value={selectedSubject}
+                  onChange={(event) => setSelectedSubject(event.target.value)}
+                >
+                  <option value="">All Subjects</option>
+                  {subjects.map((sub) => (
+                    <option key={sub.id} value={String(sub.id)}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
             <label htmlFor="chapter-select" className="tutor-picker-label">Chapter</label>
             <select
               id="chapter-select"
               className="tutor-chapter-select"
               value={selectedChapter}
               onChange={(event) => setSelectedChapter(event.target.value)}
-              disabled={chaptersLoading || chapters.length === 0}
+              disabled={chaptersLoading || displayedChapters.length === 0}
             >
               <option value="">
-                {chaptersLoading ? "Loading chapters..." : chaptersError || "No chapters found"}
+                {chaptersLoading
+                  ? "Loading chapters..."
+                  : (displayedChapters.length === 0
+                      ? (hideCompleted && chapters.length > 0 ? "All chapters completed 🎉" : (chaptersError || "No chapters found"))
+                      : "Select Chapter")}
               </option>
-              {chapters.map((chapter, index) => (
-                <option key={getChapterId(chapter, index + 1)} value={getChapterId(chapter, index + 1)}>
-                  {getChapterLabel(chapter, `Chapter ${index + 1}`)}
-                </option>
-              ))}
+              {displayedChapters.map((chapter, index) => {
+                const chId = String(getChapterId(chapter, index + 1));
+                const isDone = completedChapterIds.has(chId);
+                return (
+                  <option key={chId} value={chId}>
+                    {isDone ? "✓ " : ""}{getChapterLabel(chapter, `Chapter ${index + 1}`)}{isDone ? " (Completed)" : ""}
+                  </option>
+                );
+              })}
             </select>
+            {selectedChapter && (
+              <button
+                type="button"
+                onClick={markChapterCompleted}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: isSelectedChapterCompleted ? '#059669' : '#e07a3f',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  fontWeight: '700',
+                  whiteSpace: 'nowrap',
+                  marginLeft: '6px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+                }}
+                title="Click to mark this selected chapter as completed"
+              >
+                {isSelectedChapterCompleted ? '✓ Completed' : 'Mark Complete'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setHideCompleted(!hideCompleted)}
+              style={{
+                padding: '5px 10px',
+                fontSize: '11px',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                background: hideCompleted ? '#e07a3f' : '#ffffff',
+                color: hideCompleted ? '#ffffff' : '#33405b',
+                cursor: 'pointer',
+                fontWeight: '600',
+                whiteSpace: 'nowrap',
+                marginLeft: '4px'
+              }}
+              title="Click to hide or show completed chapters in dropdown"
+            >
+              {hideCompleted ? "🙈 Hiding Completed" : "👁️ Hide Completed"}
+            </button>
           </div>
 
           <div className="tutor-chat-header-actions">
+            <div className="tutor-tts-badge" title="Select Active AI Voice Engine">
+              <span className="tutor-tts-dot piper-online" />
+              <select
+                className="tutor-tts-select"
+                value={selectedVoiceId}
+                onChange={(e) => {
+                  setSelectedVoiceId(e.target.value);
+                  const found = AVAILABLE_VOICES.find(v => v.id === e.target.value);
+                  if (found) setTtsEngine(found.engine);
+                }}
+                title="Select Active Voice Engine"
+                aria-label="Select Active Voice Engine"
+              >
+                {AVAILABLE_VOICES.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowTtsModal(true)}
+                style={{
+                  background: "#e07a3f",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  whiteSpace: "nowrap"
+                }}
+                title="Open Voice Preview & Selection Modal"
+              >
+                <Volume2 size={14} />
+                <span>Voice Preview</span>
+              </button>
+            </div>
+
+
             {isPadHidden ? (
               <button
                 type="button"
@@ -824,6 +1084,151 @@ export default function TutorChatPage() {
           {chatError && <p className="tutor-picker-error">{chatError}</p>}
         </div>
       </aside>
+
+      {showTtsModal && (
+        <div className="admin-modal-backdrop" onClick={() => setShowTtsModal(false)}>
+          <div className="admin-modal-container" style={{ maxWidth: "620px", width: "92%" }} onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header" style={{ padding: "16px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", color: "#182746", fontSize: "16px" }}>
+                <Volume2 size={20} color="#e07a3f" />
+                <span>Voice Preview & Engine Selection (आवाज पूर्वावलोकन)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTtsModal(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#687083" }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="admin-modal-body" style={{ padding: "20px", maxHeight: "70vh", overflowY: "auto" }}>
+              <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#475569" }}>
+                Listen to live voice previews for each engine (Coqui XTTS-v2 / Voice.ai / Hindi Natural) and set your preferred AI tutor voice:
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {AVAILABLE_VOICES.map((voice) => {
+                  const isSelected = selectedVoiceId === voice.id;
+                  const isPreviewing = previewingVoiceId === voice.id;
+
+                  return (
+                    <div
+                      key={voice.id}
+                      style={{
+                        padding: "16px",
+                        borderRadius: "12px",
+                        border: isSelected ? "2px solid #059669" : "1px solid #cbd5e1",
+                        background: isSelected ? "#f0fdf4" : "#ffffff",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <input
+                            type="radio"
+                            id={`voice-radio-${voice.id}`}
+                            name="activeVoice"
+                            checked={isSelected}
+                            onChange={() => {
+                              setSelectedVoiceId(voice.id);
+                              setTtsEngine(voice.engine);
+                            }}
+                            style={{ cursor: "pointer", accentColor: "#059669", width: "16px", height: "16px" }}
+                          />
+                          <label htmlFor={`voice-radio-${voice.id}`} style={{ fontWeight: "700", color: "#0f172a", fontSize: "14px", cursor: "pointer" }}>
+                            {voice.name}
+                          </label>
+                        </div>
+                        <span style={{
+                          fontSize: "11px",
+                          fontWeight: "600",
+                          padding: "2px 8px",
+                          borderRadius: "12px",
+                          color: voice.badgeColor,
+                          background: voice.badgeBg
+                        }}>
+                          {voice.badge}
+                        </span>
+                      </div>
+
+                      <p style={{ margin: "0 0 10px 24px", fontSize: "12px", color: "#64748b" }}>
+                        {voice.description}
+                      </p>
+
+                      <div style={{
+                        marginLeft: "24px",
+                        padding: "10px 12px",
+                        background: isSelected ? "#ffffff" : "#f8fafc",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        color: "#334155",
+                        marginBottom: "10px"
+                      }}>
+                        💬 Sample: <em>"{voice.sampleText}"</em>
+                      </div>
+
+                      <div style={{ marginLeft: "24px", display: "flex", gap: "8px" }}>
+                        <button
+                          type="button"
+                          onClick={() => handlePlayVoicePreview(voice)}
+                          disabled={isPreviewing}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "6px 14px",
+                            borderRadius: "6px",
+                            background: isPreviewing ? "#3b82f6" : "#e07a3f",
+                            color: "#ffffff",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            cursor: isPreviewing ? "default" : "pointer"
+                          }}
+                        >
+                          {isPreviewing ? <RefreshCw size={13} className="pipeline-spinner" /> : <Volume2 size={13} />}
+                          <span>{isPreviewing ? "Playing Preview..." : "▶ Play Voice Preview"}</span>
+                        </button>
+
+                        {!isSelected && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedVoiceId(voice.id);
+                              setTtsEngine(voice.engine);
+                            }}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              background: "#ffffff",
+                              color: "#059669",
+                              border: "1px solid #059669",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              cursor: "pointer"
+                            }}
+                          >
+                            Set Active Voice
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="admin-modal-footer" style={{ padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
+              <div style={{ fontSize: "12px", color: "#059669", fontWeight: "600" }}>
+                ✓ Selected: {AVAILABLE_VOICES.find(v => v.id === selectedVoiceId)?.name}
+              </div>
+              <PrimaryButton onClick={() => setShowTtsModal(false)}>
+                Done & Save Voice
+              </PrimaryButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   </div>
   );

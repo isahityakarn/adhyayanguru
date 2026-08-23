@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "lucide-react": "^1.30.0",
+    "piper-wasm": "^0.1.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Upload,
@@ -142,12 +142,6 @@ export default function AdminUploadPage() {
   const [batchResults, setBatchResults] = useState([]);
   const [batchMessage, setBatchMessage] = useState("");
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-    loadStats();
-  }, []);
-
   // Update URL param on tab change
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -205,7 +199,7 @@ export default function AdminUploadPage() {
   }
 
   // Load All Subjects for Subjects Tab
-  async function loadAllSubjects() {
+  const loadAllSubjects = useCallback(async function loadAllSubjects() {
     setIsLoadingSubjects(true);
     try {
       const params = new URLSearchParams();
@@ -220,7 +214,16 @@ export default function AdminUploadPage() {
     } finally {
       setIsLoadingSubjects(false);
     }
-  }
+  }, [filterSubClass, filterSubBoard, subjectSearch]);
+
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+    loadStats();
+    if (activeTab === "subjects") {
+      loadAllSubjects();
+    }
+  }, [activeTab, loadAllSubjects]);
 
   // Handle Create Subject (either from modal or quick-add)
   async function handleSaveSubject(e) {
