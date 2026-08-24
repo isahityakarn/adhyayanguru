@@ -27,7 +27,7 @@ import {
   FileCheck,
   AlertTriangle,
   FolderPlus,
-  Library
+  Library,
 } from "lucide-react";
 import { Input, PrimaryButton, Select } from "../components/UI";
 import { get, post, del, put } from "../utils/api";
@@ -38,7 +38,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   const navigate = useNavigate();
 
   // Active tab: 'upload' | 'chapters' | 'subjects' | 'questions' | 'batch'
-  const [activeTab, setActiveTab] = useState(initialTab || searchParams.get("tab") || "upload");
+  const [activeTab, setActiveTab] = useState(
+    initialTab || searchParams.get("tab") || "upload",
+  );
 
   useEffect(() => {
     if (initialTab) {
@@ -65,10 +67,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
   // Upload Form State
   const [selectedClass, setSelectedClass] = useState(
-    () => localStorage.getItem("last_admin_upload_class_id") || ""
+    () => localStorage.getItem("last_admin_upload_class_id") || "",
   );
   const [selectedSubject, setSelectedSubject] = useState(
-    () => localStorage.getItem("last_admin_upload_subject_id") || ""
+    () => localStorage.getItem("last_admin_upload_subject_id") || "",
   );
   const [chapterNumber, setChapterNumber] = useState("");
   const [title, setTitle] = useState("");
@@ -190,10 +192,18 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       const response = await get("/admin/upload");
       const fetchedClasses = response.classes || [];
       setClasses(fetchedClasses);
-      setBoards(response.boards || [{ id: 1, name: "CBSE" }, { id: 2, name: "ICSE" }]);
+      setBoards(
+        response.boards || [
+          { id: 1, name: "CBSE" },
+          { id: 2, name: "ICSE" },
+        ],
+      );
 
       const savedClassId = localStorage.getItem("last_admin_upload_class_id");
-      if (savedClassId && fetchedClasses.some((c) => String(c.id) === String(savedClassId))) {
+      if (
+        savedClassId &&
+        fetchedClasses.some((c) => String(c.id) === String(savedClassId))
+      ) {
         setSelectedClass(String(savedClassId));
       } else if (fetchedClasses.length > 0 && !selectedClass) {
         setSelectedClass(String(fetchedClasses[0].id));
@@ -220,11 +230,18 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       const fetchedSubjects = response.subjects || [];
       setSubjects(fetchedSubjects);
 
-      const savedSubjectId = localStorage.getItem("last_admin_upload_subject_id");
-      if (savedSubjectId && fetchedSubjects.some((s) => String(s.id) === String(savedSubjectId))) {
+      const savedSubjectId = localStorage.getItem(
+        "last_admin_upload_subject_id",
+      );
+      if (
+        savedSubjectId &&
+        fetchedSubjects.some((s) => String(s.id) === String(savedSubjectId))
+      ) {
         setSelectedSubject(String(savedSubjectId));
       } else if (fetchedSubjects.length > 0) {
-        if (!fetchedSubjects.some((s) => String(s.id) === String(selectedSubject))) {
+        if (
+          !fetchedSubjects.some((s) => String(s.id) === String(selectedSubject))
+        ) {
           setSelectedSubject(String(fetchedSubjects[0].id));
         }
       } else {
@@ -236,22 +253,25 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   }
 
   // Load All Subjects for Subjects Tab
-  const loadAllSubjects = useCallback(async function loadAllSubjects() {
-    setIsLoadingSubjects(true);
-    try {
-      const params = new URLSearchParams();
-      if (filterSubClass) params.append("class_id", filterSubClass);
-      if (filterSubBoard) params.append("board_id", filterSubBoard);
-      if (subjectSearch) params.append("search", subjectSearch);
+  const loadAllSubjects = useCallback(
+    async function loadAllSubjects() {
+      setIsLoadingSubjects(true);
+      try {
+        const params = new URLSearchParams();
+        if (filterSubClass) params.append("class_id", filterSubClass);
+        if (filterSubBoard) params.append("board_id", filterSubBoard);
+        if (subjectSearch) params.append("search", subjectSearch);
 
-      const response = await get(`/admin/subjects-list?${params.toString()}`);
-      setAllSubjects(response.subjects || []);
-    } catch (error) {
-      console.error("Failed to load all subjects:", error);
-    } finally {
-      setIsLoadingSubjects(false);
-    }
-  }, [filterSubClass, filterSubBoard, subjectSearch]);
+        const response = await get(`/admin/subjects-list?${params.toString()}`);
+        setAllSubjects(response.subjects || []);
+      } catch (error) {
+        console.error("Failed to load all subjects:", error);
+      } finally {
+        setIsLoadingSubjects(false);
+      }
+    },
+    [filterSubClass, filterSubBoard, subjectSearch],
+  );
 
   // Load initial data
   useEffect(() => {
@@ -270,7 +290,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     if (!newSubjectData.class_id) missing.push("Class Level");
 
     if (missing.length > 0) {
-      setSubjectFormError(`Validation failed: The following field(s) are required: ${missing.join(", ")}.`);
+      setSubjectFormError(
+        `Validation failed: The following field(s) are required: ${missing.join(", ")}.`,
+      );
       return;
     }
 
@@ -328,14 +350,17 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
   // Handle Delete Subject
   async function handleDeleteSubject(subjectId, subjectName, chaptersCount) {
-    const confirmMsg = chaptersCount > 0
-      ? `Warning: Subject '${subjectName}' has ${chaptersCount} chapter(s) linked to it. Are you sure you want to force-delete it?`
-      : `Are you sure you want to delete subject '${subjectName}'?`;
+    const confirmMsg =
+      chaptersCount > 0
+        ? `Warning: Subject '${subjectName}' has ${chaptersCount} chapter(s) linked to it. Are you sure you want to force-delete it?`
+        : `Are you sure you want to delete subject '${subjectName}'?`;
 
     if (!confirm(confirmMsg)) return;
 
     try {
-      await del(`/admin/subjects/${subjectId}${chaptersCount > 0 ? "?force=1" : ""}`);
+      await del(
+        `/admin/subjects/${subjectId}${chaptersCount > 0 ? "?force=1" : ""}`,
+      );
       alert(`Subject '${subjectName}' deleted successfully.`);
       loadAllSubjects();
       loadStats();
@@ -352,7 +377,8 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       const params = new URLSearchParams();
       if (filterClass) params.append("class_id", filterClass);
       if (filterSubject) params.append("subject_id", filterSubject);
-      if (filterStatus && filterStatus !== "all") params.append("status", filterStatus);
+      if (filterStatus && filterStatus !== "all")
+        params.append("status", filterStatus);
       if (chapterSearch) params.append("search", chapterSearch);
 
       const response = await get(`/admin/chapters?${params.toString()}`);
@@ -370,8 +396,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     try {
       const params = new URLSearchParams();
       if (filterQChapter) params.append("chapter_id", filterQChapter);
-      if (filterQType && filterQType !== "all") params.append("question_type", filterQType);
-      if (filterQDifficulty && filterQDifficulty !== "all") params.append("difficulty", filterQDifficulty);
+      if (filterQType && filterQType !== "all")
+        params.append("question_type", filterQType);
+      if (filterQDifficulty && filterQDifficulty !== "all")
+        params.append("difficulty", filterQDifficulty);
       if (questionSearch) params.append("search", questionSearch);
 
       const response = await get(`/admin/questions?${params.toString()}`);
@@ -403,12 +431,17 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   };
 
   const handleFileSelected = (file) => {
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    if (
+      file.type !== "application/pdf" &&
+      !file.name.toLowerCase().endsWith(".pdf")
+    ) {
       setUploadError("Only PDF files are supported.");
       return;
     }
     if (file.size > 15 * 1024 * 1024) {
-      setUploadError(`Selected file size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the maximum allowed limit of 15 MB. Please choose a smaller PDF.`);
+      setUploadError(
+        `Selected file size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the maximum allowed limit of 15 MB. Please choose a smaller PDF.`,
+      );
       return;
     }
     setPdfFile(file);
@@ -440,7 +473,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     if (!pdfFile) missing.push("PDF File");
 
     if (missing.length > 0) {
-      setUploadError(`Validation failed: The following field(s) are required: ${missing.join(", ")}.`);
+      setUploadError(
+        `Validation failed: The following field(s) are required: ${missing.join(", ")}.`,
+      );
       return;
     }
 
@@ -483,7 +518,7 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             Accept: "application/json",
           },
           body: formData,
-        }
+        },
       );
 
       if (!response.ok) {
@@ -492,7 +527,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         if (errorData?.errors && Object.keys(errorData.errors).length > 0) {
           detailedError = Object.values(errorData.errors).flat().join(" ");
         } else {
-          detailedError = errorData?.message || `Upload failed with status ${response.status}`;
+          detailedError =
+            errorData?.message ||
+            `Upload failed with status ${response.status}`;
         }
         throw new Error(detailedError);
       }
@@ -511,7 +548,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Upload error:", error);
-      setUploadError(error.message || "Failed to upload and process PDF chapter.");
+      setUploadError(
+        error.message || "Failed to upload and process PDF chapter.",
+      );
       setUploadStage(0);
     } finally {
       clearTimeout(stageTimer1);
@@ -526,7 +565,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     setReprocessingId(chapterId);
     try {
       const response = await post(`/admin/chapters/${chapterId}/reprocess`);
-      alert(`Success! Extracted ${response.chapter.text_length} characters and saved ${response.chapter.questions_count} questions into the database.`);
+      alert(
+        `Success! Extracted ${response.chapter.text_length} characters and saved ${response.chapter.questions_count} questions into the database.`,
+      );
       loadChapters();
       loadStats();
       if (inspectedChapter && inspectedChapter.id === chapterId) {
@@ -541,7 +582,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
   // Handle Generate More Questions
   async function handleGenerateMoreQuestions(chapterId) {
-    const countStr = prompt("How many additional questions would you like to generate and add to DB?", "4");
+    const countStr = prompt(
+      "How many additional questions would you like to generate and add to DB?",
+      "4",
+    );
     if (!countStr) return;
     const count = parseInt(countStr, 10);
     if (isNaN(count) || count < 1 || count > 10) {
@@ -551,12 +595,17 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
     setReprocessingId(chapterId);
     try {
-      const response = await post(`/admin/chapters/${chapterId}/generate-questions`, {
-        count,
-        difficulty: "mixed",
-        replace_existing: false,
-      });
-      alert(`Success! Generated ${response.new_questions_count} new questions. Total in DB: ${response.total_questions_count}`);
+      const response = await post(
+        `/admin/chapters/${chapterId}/generate-questions`,
+        {
+          count,
+          difficulty: "mixed",
+          replace_existing: false,
+        },
+      );
+      alert(
+        `Success! Generated ${response.new_questions_count} new questions. Total in DB: ${response.total_questions_count}`,
+      );
       loadChapters();
       loadStats();
       if (inspectedChapter && inspectedChapter.id === chapterId) {
@@ -586,7 +635,11 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
   // Delete Chapter
   async function handleDeleteChapter(chapterId, chapterTitle) {
-    if (!confirm(`Are you sure you want to delete chapter "${chapterTitle}" and all its extracted text and questions from database?`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete chapter "${chapterTitle}" and all its extracted text and questions from database?`,
+      )
+    ) {
       return;
     }
     try {
@@ -605,7 +658,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     setIsBatchProcessing(true);
     setBatchMessage("Processing batch of chapters with Gemini AI...");
     try {
-      const response = await post("/admin/batch-process", { limit: batchLimit });
+      const response = await post("/admin/batch-process", {
+        limit: batchLimit,
+      });
       setBatchResults(response.processed || []);
       setBatchMessage(response.message);
       loadStats();
@@ -619,7 +674,12 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
   // Delete Question from DB
   async function handleDeleteQuestion(questionId) {
-    if (!confirm("Are you sure you want to delete this question from the database?")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this question from the database?",
+      )
+    )
+      return;
     try {
       await del(`/admin/questions/${questionId}`);
       loadQuestions();
@@ -645,14 +705,21 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       {/* Hero / Header */}
       <div className="dashboard-hero">
         <div>
-          <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: c.primary }}>
+          <div
+            className="text-xs font-bold uppercase tracking-wider mb-2"
+            style={{ color: c.primary }}
+          >
             AI Content Ingestion & Curriculum Engine
           </div>
-          <h1 className="text-3xl font-bold" style={{ ...headingFont, color: c.dark }}>
+          <h1
+            className="text-3xl font-bold"
+            style={{ ...headingFont, color: c.dark }}
+          >
             PDF Chapter, Subject & Question Dashboard
           </h1>
           <p className="text-sm mt-1" style={{ color: c.gray }}>
-            Insert subjects, upload textbook PDFs, automatically extract text, and synthesize practice questions directly into the database.
+            Insert subjects, upload textbook PDFs, automatically extract text,
+            and synthesize practice questions directly into the database.
           </p>
         </div>
 
@@ -661,13 +728,16 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             onClick={() => {
               setIsQuickSubjectModal(false);
               setEditingSubject(null);
-              setNewSubjectData({ name: "", class_id: classes[0]?.id || "", board_id: "1" });
+              setNewSubjectData({
+                name: "",
+                class_id: classes[0]?.id || "",
+                board_id: "1",
+              });
               setNewSubjectModalOpen(true);
             }}
             className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all hover:shadow-md bg-white border border-amber-300 text-amber-900"
           >
-            <FolderPlus size={16} color={c.primary} />
-            + Insert Subject
+            <FolderPlus size={16} color={c.primary} />+ Insert Subject
           </button>
 
           <button
@@ -692,7 +762,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       {/* High Level Stats Grid */}
       <div className="dashboard-stat-grid">
         <div className="stat-metric-card">
-          <div className="stat-metric-icon" style={{ background: "#fef3c7", color: "#b45309" }}>
+          <div
+            className="stat-metric-icon"
+            style={{ background: "#fef3c7", color: "#b45309" }}
+          >
             <Library size={24} />
           </div>
           <div>
@@ -702,7 +775,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         </div>
 
         <div className="stat-metric-card">
-          <div className="stat-metric-icon" style={{ background: "#fff0d4", color: "#c87812" }}>
+          <div
+            className="stat-metric-icon"
+            style={{ background: "#fff0d4", color: "#c87812" }}
+          >
             <BookOpen size={24} />
           </div>
           <div>
@@ -712,7 +788,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         </div>
 
         <div className="stat-metric-card">
-          <div className="stat-metric-icon" style={{ background: "#dcede6", color: "#306a5a" }}>
+          <div
+            className="stat-metric-icon"
+            style={{ background: "#dcede6", color: "#306a5a" }}
+          >
             <FileCheck size={24} />
           </div>
           <div>
@@ -722,7 +801,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         </div>
 
         <div className="stat-metric-card">
-          <div className="stat-metric-icon" style={{ background: "#e8eaff", color: "#3d49ad" }}>
+          <div
+            className="stat-metric-icon"
+            style={{ background: "#e8eaff", color: "#3d49ad" }}
+          >
             <HelpCircle size={24} />
           </div>
           <div>
@@ -776,7 +858,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
           <Sparkles size={16} />
           <span>Batch Auto-Processor</span>
           {stats.unprocessed_chapters > 0 && (
-            <span className="dashboard-tab-count" style={{ background: "#fee2e2", color: "#b91c1c" }}>
+            <span
+              className="dashboard-tab-count"
+              style={{ background: "#fee2e2", color: "#b91c1c" }}
+            >
               {stats.unprocessed_chapters}
             </span>
           )}
@@ -793,11 +878,15 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             <div className="dashboard-card">
               <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
+                  <h2
+                    className="text-xl font-bold"
+                    style={{ ...headingFont, color: c.dark }}
+                  >
                     Upload Chapter PDF
                   </h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Extracts text and generates multiple choice & comprehension questions in database
+                    Extracts text and generates multiple choice & comprehension
+                    questions in database
                   </p>
                 </div>
                 <span className="app-badge app-badge-info">
@@ -809,7 +898,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 {/* Class & Subject row with + Quick Add Subject */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: c.darkGray }}>
+                    <label
+                      className="block text-xs font-bold uppercase tracking-wider mb-2"
+                      style={{ color: c.darkGray }}
+                    >
                       Class Level *
                     </label>
                     <select
@@ -829,7 +921,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-bold uppercase tracking-wider" style={{ color: c.darkGray }}>
+                      <label
+                        className="text-xs font-bold uppercase tracking-wider"
+                        style={{ color: c.darkGray }}
+                      >
                         Subject *
                       </label>
                       <button
@@ -858,7 +953,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                       required
                     >
                       <option value="">
-                        {selectedClass ? "Select Subject" : "Select Class First"}
+                        {selectedClass
+                          ? "Select Subject"
+                          : "Select Class First"}
                       </option>
                       {subjects.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -872,7 +969,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 {/* Chapter Number & Title */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: c.darkGray }}>
+                    <label
+                      className="block text-xs font-bold uppercase tracking-wider mb-2"
+                      style={{ color: c.darkGray }}
+                    >
                       Chapter No. *
                     </label>
                     <Input
@@ -886,7 +986,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: c.darkGray }}>
+                    <label
+                      className="block text-xs font-bold uppercase tracking-wider mb-2"
+                      style={{ color: c.darkGray }}
+                    >
                       Chapter Title *
                     </label>
                     <Input
@@ -899,28 +1002,40 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   </div>
                 </div>
 
-
-
                 {/* AI Configuration Preferences */}
-                <div className="p-4 rounded-xl" style={{ background: "#faf8f2", border: "1px solid #e8e4da" }}>
+                <div
+                  className="p-4 rounded-xl"
+                  style={{ background: "#faf8f2", border: "1px solid #e8e4da" }}
+                >
                   <div className="flex items-center gap-2 mb-3">
                     <Sparkles size={16} color={c.primary} />
-                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: c.dark }}>
+                    <span
+                      className="text-xs font-bold uppercase tracking-wider"
+                      style={{ color: c.dark }}
+                    >
                       AI Question Generation Settings
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold mb-1.5" style={{ color: c.gray }}>
+                      <label
+                        className="block text-xs font-semibold mb-1.5"
+                        style={{ color: c.gray }}
+                      >
                         Questions to Generate in DB
                       </label>
                       <select
                         className="form-control"
                         value={questionCount}
-                        onChange={(e) => setQuestionCount(parseInt(e.target.value, 10))}
+                        onChange={(e) =>
+                          setQuestionCount(parseInt(e.target.value, 10))
+                        }
                       >
-                        <option value="10">10 Questions (Recommended: MCQs & Conceptual Questions)</option>
+                        <option value="10">
+                          10 Questions (Recommended: MCQs & Conceptual
+                          Questions)
+                        </option>
                         <option value="8">8 Questions (Comprehensive)</option>
                         <option value="6">6 Questions (Standard)</option>
                         <option value="4">4 Questions (Fast)</option>
@@ -928,7 +1043,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold mb-1.5" style={{ color: c.gray }}>
+                      <label
+                        className="block text-xs font-semibold mb-1.5"
+                        style={{ color: c.gray }}
+                      >
                         Target Difficulty
                       </label>
                       <select
@@ -936,9 +1054,15 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                         value={difficulty}
                         onChange={(e) => setDifficulty(e.target.value)}
                       >
-                        <option value="mixed">Mixed (Easy, Medium & Hard)</option>
-                        <option value="easy">Easy (Foundation / Beginner)</option>
-                        <option value="medium">Medium (Standard Assessment)</option>
+                        <option value="mixed">
+                          Mixed (Easy, Medium & Hard)
+                        </option>
+                        <option value="easy">
+                          Easy (Foundation / Beginner)
+                        </option>
+                        <option value="medium">
+                          Medium (Standard Assessment)
+                        </option>
                         <option value="hard">Hard (Advanced / Olympiad)</option>
                       </select>
                     </div>
@@ -947,7 +1071,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
                 {/* PDF Dropzone */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: c.darkGray }}>
+                  <label
+                    className="block text-xs font-bold uppercase tracking-wider mb-2"
+                    style={{ color: c.darkGray }}
+                  >
                     Chapter PDF Document *
                   </label>
 
@@ -956,7 +1083,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    onClick={() =>
+                      fileInputRef.current && fileInputRef.current.click()
+                    }
                   >
                     <input
                       ref={fileInputRef}
@@ -971,24 +1100,40 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                       }}
                     />
 
-                    <Upload size={36} color={c.primary} className="mx-auto mb-2" />
-                    <div className="text-sm font-bold" style={{ color: c.dark }}>
-                      {isDragging ? "Drop PDF file here" : "Click to select PDF or drag & drop"}
+                    <Upload
+                      size={36}
+                      color={c.primary}
+                      className="mx-auto mb-2"
+                    />
+                    <div
+                      className="text-sm font-bold"
+                      style={{ color: c.dark }}
+                    >
+                      {isDragging
+                        ? "Drop PDF file here"
+                        : "Click to select PDF or drag & drop"}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Supports full textbook chapters up to 50MB
                     </div>
 
                     {pdfFile && (
-                      <div className="pdf-file-badge" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="pdf-file-badge"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <FileText size={16} />
-                        <span>{pdfFile.name} ({(pdfFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                        <span>
+                          {pdfFile.name} (
+                          {(pdfFile.size / (1024 * 1024)).toFixed(2)} MB)
+                        </span>
                         <button
                           type="button"
                           className="text-xs text-red-600 font-bold ml-2 hover:underline"
                           onClick={() => {
                             setPdfFile(null);
-                            if (fileInputRef.current) fileInputRef.current.value = "";
+                            if (fileInputRef.current)
+                              fileInputRef.current.value = "";
                           }}
                         >
                           Remove
@@ -1009,28 +1154,89 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 {/* Live Pipeline Animation */}
                 {isUploading && (
                   <div className="pipeline-container">
-                    <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: c.primary }}>
+                    <div
+                      className="text-xs font-bold uppercase tracking-wider mb-3"
+                      style={{ color: c.primary }}
+                    >
                       ⚡ Automatic Ingestion Pipeline
                     </div>
                     <div className="pipeline-steps">
-                      <div className={`pipeline-step-item ${uploadStage === 1 ? "active" : uploadStage > 1 ? "done" : "pending"}`}>
-                        {uploadStage > 1 ? <CheckCircle size={16} color="#10b981" /> : uploadStage === 1 ? <RefreshCw size={16} className="pipeline-spinner" color={c.primary} /> : <div className="w-4 h-4 rounded-full border border-gray-300" />}
-                        <span>Stage 1: Uploading & Storing PDF in Filesystem</span>
+                      <div
+                        className={`pipeline-step-item ${uploadStage === 1 ? "active" : uploadStage > 1 ? "done" : "pending"}`}
+                      >
+                        {uploadStage > 1 ? (
+                          <CheckCircle size={16} color="#10b981" />
+                        ) : uploadStage === 1 ? (
+                          <RefreshCw
+                            size={16}
+                            className="pipeline-spinner"
+                            color={c.primary}
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border border-gray-300" />
+                        )}
+                        <span>
+                          Stage 1: Uploading & Storing PDF in Filesystem
+                        </span>
                       </div>
 
-                      <div className={`pipeline-step-item ${uploadStage === 2 ? "active" : uploadStage > 2 ? "done" : "pending"}`}>
-                        {uploadStage > 2 ? <CheckCircle size={16} color="#10b981" /> : uploadStage === 2 ? <RefreshCw size={16} className="pipeline-spinner" color={c.primary} /> : <div className="w-4 h-4 rounded-full border border-gray-300" />}
-                        <span>Stage 2: Parsing & Extracting Clean Text Content</span>
+                      <div
+                        className={`pipeline-step-item ${uploadStage === 2 ? "active" : uploadStage > 2 ? "done" : "pending"}`}
+                      >
+                        {uploadStage > 2 ? (
+                          <CheckCircle size={16} color="#10b981" />
+                        ) : uploadStage === 2 ? (
+                          <RefreshCw
+                            size={16}
+                            className="pipeline-spinner"
+                            color={c.primary}
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border border-gray-300" />
+                        )}
+                        <span>
+                          Stage 2: Parsing & Extracting Clean Text Content
+                        </span>
                       </div>
 
-                      <div className={`pipeline-step-item ${uploadStage === 3 ? "active" : uploadStage > 3 ? "done" : "pending"}`}>
-                        {uploadStage > 3 ? <CheckCircle size={16} color="#10b981" /> : uploadStage === 3 ? <RefreshCw size={16} className="pipeline-spinner" color={c.primary} /> : <div className="w-4 h-4 rounded-full border border-gray-300" />}
-                        <span>Stage 3: Gemini AI Synthesizing Concepts & Generating Questions</span>
+                      <div
+                        className={`pipeline-step-item ${uploadStage === 3 ? "active" : uploadStage > 3 ? "done" : "pending"}`}
+                      >
+                        {uploadStage > 3 ? (
+                          <CheckCircle size={16} color="#10b981" />
+                        ) : uploadStage === 3 ? (
+                          <RefreshCw
+                            size={16}
+                            className="pipeline-spinner"
+                            color={c.primary}
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border border-gray-300" />
+                        )}
+                        <span>
+                          Stage 3: Gemini AI Synthesizing Concepts & Generating
+                          Questions
+                        </span>
                       </div>
 
-                      <div className={`pipeline-step-item ${uploadStage >= 4 ? (uploadStage === 5 ? "done" : "active") : "pending"}`}>
-                        {uploadStage === 5 ? <CheckCircle size={16} color="#10b981" /> : uploadStage === 4 ? <RefreshCw size={16} className="pipeline-spinner" color={c.primary} /> : <div className="w-4 h-4 rounded-full border border-gray-300" />}
-                        <span>Stage 4: Writing Chapter Content & Questions to Relational Database</span>
+                      <div
+                        className={`pipeline-step-item ${uploadStage >= 4 ? (uploadStage === 5 ? "done" : "active") : "pending"}`}
+                      >
+                        {uploadStage === 5 ? (
+                          <CheckCircle size={16} color="#10b981" />
+                        ) : uploadStage === 4 ? (
+                          <RefreshCw
+                            size={16}
+                            className="pipeline-spinner"
+                            color={c.primary}
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border border-gray-300" />
+                        )}
+                        <span>
+                          Stage 4: Writing Chapter Content & Questions to
+                          Relational Database
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1061,17 +1267,32 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
           {/* Right Column: Result / Quick Tips */}
           <div className="lg:col-span-4 space-y-4">
             {uploadResult ? (
-              <div className="dashboard-card border-green-300" style={{ background: "#f5fbf7" }}>
+              <div
+                className="dashboard-card border-green-300"
+                style={{ background: "#f5fbf7" }}
+              >
                 <div className="flex items-center gap-2 text-green-800 font-bold mb-3">
                   <CheckCircle size={20} color="#10b981" />
                   <span>Ingestion Successful!</span>
                 </div>
 
                 <div className="space-y-2 text-xs" style={{ color: c.dark }}>
-                  <div><strong>Chapter:</strong> Ch {uploadResult.chapter_number}: {uploadResult.title}</div>
-                  <div><strong>Course:</strong> {uploadResult.class} · {uploadResult.subject}</div>
-                  <div><strong>Extracted Text:</strong> {uploadResult.text_length?.toLocaleString()} characters</div>
-                  <div><strong>Questions in DB:</strong> {uploadResult.questions_count} questions generated</div>
+                  <div>
+                    <strong>Chapter:</strong> Ch {uploadResult.chapter_number}:{" "}
+                    {uploadResult.title}
+                  </div>
+                  <div>
+                    <strong>Course:</strong> {uploadResult.class} ·{" "}
+                    {uploadResult.subject}
+                  </div>
+                  <div>
+                    <strong>Extracted Text:</strong>{" "}
+                    {uploadResult.text_length?.toLocaleString()} characters
+                  </div>
+                  <div>
+                    <strong>Questions in DB:</strong>{" "}
+                    {uploadResult.questions_count} questions generated
+                  </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-green-200 flex flex-col gap-2">
@@ -1087,8 +1308,14 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   <button
                     type="button"
                     className="button-medium font-semibold rounded-lg text-xs flex items-center justify-center gap-2"
-                    style={{ background: "#fff", border: `1px solid ${c.primary}`, color: c.primary }}
-                    onClick={() => navigate(`/quiz?chapter_id=${uploadResult.id}`)}
+                    style={{
+                      background: "#fff",
+                      border: `1px solid ${c.primary}`,
+                      color: c.primary,
+                    }}
+                    onClick={() =>
+                      navigate(`/quiz?chapter_id=${uploadResult.id}`)
+                    }
                   >
                     <Play size={14} /> Launch Practice Quiz
                   </button>
@@ -1103,18 +1330,38 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   </h3>
                 </div>
 
-                <div className="space-y-3 text-xs" style={{ color: c.gray, lineHeight: 1.6 }}>
+                <div
+                  className="space-y-3 text-xs"
+                  style={{ color: c.gray, lineHeight: 1.6 }}
+                >
                   <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">1</span>
-                    <span><strong>Insert Subject:</strong> Create subjects for any class level and educational board.</span>
+                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">
+                      1
+                    </span>
+                    <span>
+                      <strong>Insert Subject:</strong> Create subjects for any
+                      class level and educational board.
+                    </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">2</span>
-                    <span><strong>PDF Text Extraction:</strong> The system parses multi-page PDFs, preserving English, Hindi, and scientific symbols.</span>
+                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">
+                      2
+                    </span>
+                    <span>
+                      <strong>PDF Text Extraction:</strong> The system parses
+                      multi-page PDFs, preserving English, Hindi, and scientific
+                      symbols.
+                    </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">3</span>
-                    <span><strong>AI Question Synthesis:</strong> Gemini analyzes key concepts, generating MCQs (with 4 options and explanations) and conceptual questions.</span>
+                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center flex-shrink-0 text-[10px]">
+                      3
+                    </span>
+                    <span>
+                      <strong>AI Question Synthesis:</strong> Gemini analyzes
+                      key concepts, generating MCQs (with 4 options and
+                      explanations) and conceptual questions.
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1177,11 +1424,15 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         <div className="dashboard-card">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
             <div>
-              <h2 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
+              <h2
+                className="text-xl font-bold"
+                style={{ ...headingFont, color: c.dark }}
+              >
                 Subjects & Curriculum Database
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Insert new subjects, configure boards and classes, and view chapter counts
+                Insert new subjects, configure boards and classes, and view
+                chapter counts
               </p>
             </div>
 
@@ -1225,7 +1476,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             >
               <option value="">All Classes</option>
               {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
               ))}
             </select>
 
@@ -1237,14 +1490,20 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             >
               <option value="">All Boards</option>
               {boards.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
               ))}
             </select>
 
             <button
               onClick={loadAllSubjects}
               className="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-              style={{ background: "#f5f2e9", border: "1px solid #e2ddd0", color: c.dark }}
+              style={{
+                background: "#f5f2e9",
+                border: "1px solid #e2ddd0",
+                color: c.dark,
+              }}
             >
               <Filter size={14} /> Filter
             </button>
@@ -1253,14 +1512,20 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
           {/* Subjects Table */}
           {isLoadingSubjects ? (
             <div className="text-center py-12 text-gray-500">
-              <RefreshCw size={24} className="pipeline-spinner mx-auto mb-2" color={c.primary} />
+              <RefreshCw
+                size={24}
+                className="pipeline-spinner mx-auto mb-2"
+                color={c.primary}
+              />
               <p className="text-xs">Loading subjects from database...</p>
             </div>
           ) : allSubjects.length === 0 ? (
             <div className="text-center py-12 bg-amber-50/50 rounded-xl border border-amber-200 text-gray-600">
               <Library size={32} className="mx-auto mb-2 text-amber-500" />
               <p className="font-semibold text-sm">No subjects found</p>
-              <p className="text-xs mt-1 text-gray-500">Click "Insert New Subject" to add your first subject.</p>
+              <p className="text-xs mt-1 text-gray-500">
+                Click "Insert New Subject" to add your first subject.
+              </p>
             </div>
           ) : (
             <div className="table-scroll-wrapper">
@@ -1279,7 +1544,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   {allSubjects.map((sub) => (
                     <tr key={sub.id}>
                       <td>
-                        <div className="font-bold text-sm" style={{ color: c.dark }}>
+                        <div
+                          className="font-bold text-sm"
+                          style={{ color: c.dark }}
+                        >
                           {sub.name}
                         </div>
                       </td>
@@ -1310,7 +1578,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
                       <td>
                         <span className="text-xs text-gray-500">
-                          {sub.created_at ? new Date(sub.created_at).toLocaleDateString() : "System Default"}
+                          {sub.created_at
+                            ? new Date(sub.created_at).toLocaleDateString()
+                            : "System Default"}
                         </span>
                       </td>
 
@@ -1348,7 +1618,13 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                           <button
                             className="action-icon-btn btn-delete"
                             title="Delete Subject"
-                            onClick={() => handleDeleteSubject(sub.id, sub.name, sub.chapters_count)}
+                            onClick={() =>
+                              handleDeleteSubject(
+                                sub.id,
+                                sub.name,
+                                sub.chapters_count,
+                              )
+                            }
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1370,11 +1646,15 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         <div className="dashboard-card">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
             <div>
-              <h2 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
+              <h2
+                className="text-xl font-bold"
+                style={{ ...headingFont, color: c.dark }}
+              >
                 Chapters & Content Database
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Browse stored chapter content, extracted text, and generated question counts
+                Browse stored chapter content, extracted text, and generated
+                question counts
               </p>
             </div>
 
@@ -1412,7 +1692,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             >
               <option value="">All Classes</option>
               {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
               ))}
             </select>
 
@@ -1430,7 +1712,11 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             <button
               onClick={loadChapters}
               className="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-              style={{ background: "#f5f2e9", border: "1px solid #e2ddd0", color: c.dark }}
+              style={{
+                background: "#f5f2e9",
+                border: "1px solid #e2ddd0",
+                color: c.dark,
+              }}
             >
               <Filter size={14} /> Apply Filter
             </button>
@@ -1439,14 +1725,22 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
           {/* Chapters Table */}
           {isLoadingChapters ? (
             <div className="text-center py-12 text-gray-500">
-              <RefreshCw size={24} className="pipeline-spinner mx-auto mb-2" color={c.primary} />
+              <RefreshCw
+                size={24}
+                className="pipeline-spinner mx-auto mb-2"
+                color={c.primary}
+              />
               <p className="text-xs">Loading chapters from database...</p>
             </div>
           ) : chapters.length === 0 ? (
             <div className="text-center py-12 bg-amber-50/50 rounded-xl border border-amber-200 text-gray-600">
               <BookOpen size={32} className="mx-auto mb-2 text-amber-500" />
-              <p className="font-semibold text-sm">No chapters found matching criteria</p>
-              <p className="text-xs mt-1 text-gray-500">Upload a chapter PDF to begin or clear filters.</p>
+              <p className="font-semibold text-sm">
+                No chapters found matching criteria
+              </p>
+              <p className="text-xs mt-1 text-gray-500">
+                Upload a chapter PDF to begin or clear filters.
+              </p>
             </div>
           ) : (
             <div className="table-scroll-wrapper">
@@ -1465,7 +1759,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   {chapters.map((ch) => (
                     <tr key={ch.id}>
                       <td>
-                        <div className="font-bold text-sm" style={{ color: c.dark }}>
+                        <div
+                          className="font-bold text-sm"
+                          style={{ color: c.dark }}
+                        >
                           Ch {ch.chapter_number}: {ch.title}
                         </div>
                         {ch.text_preview && (
@@ -1484,7 +1781,8 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                       <td>
                         {ch.has_extracted_text ? (
                           <span className="app-badge app-badge-success">
-                            <CheckCircle size={12} /> {ch.text_length?.toLocaleString()} chars
+                            <CheckCircle size={12} />{" "}
+                            {ch.text_length?.toLocaleString()} chars
                           </span>
                         ) : (
                           <span className="app-badge app-badge-danger">
@@ -1496,7 +1794,8 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                       <td>
                         {ch.questions_count > 0 ? (
                           <span className="app-badge app-badge-info">
-                            <HelpCircle size={12} /> {ch.questions_count} Questions
+                            <HelpCircle size={12} /> {ch.questions_count}{" "}
+                            Questions
                           </span>
                         ) : (
                           <span className="app-badge app-badge-warning">
@@ -1507,7 +1806,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
                       <td>
                         {ch.source_file_url ? (
-                          <span className="text-xs font-mono text-gray-600 truncate block max-w-[140px]" title={ch.source_file_url}>
+                          <span
+                            className="text-xs font-mono text-gray-600 truncate block max-w-[140px]"
+                            title={ch.source_file_url}
+                          >
                             {ch.source_file_url}
                           </span>
                         ) : (
@@ -1521,9 +1823,12 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                             className="action-icon-btn"
                             title="Upload / Modify PDF for Chapter"
                             onClick={() => {
-                              if (ch.class_id) setSelectedClass(String(ch.class_id));
-                              if (ch.subject_id) setSelectedSubject(String(ch.subject_id));
-                              if (ch.chapter_number) setChapterNumber(String(ch.chapter_number));
+                              if (ch.class_id)
+                                setSelectedClass(String(ch.class_id));
+                              if (ch.subject_id)
+                                setSelectedSubject(String(ch.subject_id));
+                              if (ch.chapter_number)
+                                setChapterNumber(String(ch.chapter_number));
                               if (ch.title) setTitle(ch.title);
                               handleTabChange("upload");
                             }}
@@ -1545,7 +1850,14 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                             disabled={reprocessingId === ch.id || !ch.has_pdf}
                             onClick={() => handleReprocess(ch.id)}
                           >
-                            <RefreshCw size={14} className={reprocessingId === ch.id ? "pipeline-spinner" : ""} />
+                            <RefreshCw
+                              size={14}
+                              className={
+                                reprocessingId === ch.id
+                                  ? "pipeline-spinner"
+                                  : ""
+                              }
+                            />
                           </button>
 
                           <button
@@ -1560,7 +1872,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                           <button
                             className="action-icon-btn"
                             title="Launch Quiz Test"
-                            onClick={() => navigate(`/quiz?chapter_id=${ch.id}`)}
+                            onClick={() =>
+                              navigate(`/quiz?chapter_id=${ch.id}`)
+                            }
                           >
                             <Play size={14} />
                           </button>
@@ -1590,11 +1904,15 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         <div className="dashboard-card">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
             <div>
-              <h2 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
+              <h2
+                className="text-xl font-bold"
+                style={{ ...headingFont, color: c.dark }}
+              >
                 Question Bank Repository (Database)
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                All questions generated by Gemini and stored in the database for quizzes & assessments
+                All questions generated by Gemini and stored in the database for
+                quizzes & assessments
               </p>
             </div>
 
@@ -1662,7 +1980,11 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             <button
               onClick={loadQuestions}
               className="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-              style={{ background: "#f5f2e9", border: "1px solid #e2ddd0", color: c.dark }}
+              style={{
+                background: "#f5f2e9",
+                border: "1px solid #e2ddd0",
+                color: c.dark,
+              }}
             >
               <Filter size={14} /> Filter Questions
             </button>
@@ -1671,14 +1993,23 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
           {/* Question Cards Grid */}
           {isLoadingQuestions ? (
             <div className="text-center py-12 text-gray-500">
-              <RefreshCw size={24} className="pipeline-spinner mx-auto mb-2" color={c.primary} />
+              <RefreshCw
+                size={24}
+                className="pipeline-spinner mx-auto mb-2"
+                color={c.primary}
+              />
               <p className="text-xs">Loading question bank...</p>
             </div>
           ) : questions.length === 0 ? (
             <div className="text-center py-12 bg-amber-50/50 rounded-xl border border-amber-200 text-gray-600">
               <HelpCircle size={32} className="mx-auto mb-2 text-amber-500" />
-              <p className="font-semibold text-sm">No questions in database yet</p>
-              <p className="text-xs mt-1 text-gray-500">Upload a PDF or reprocess existing chapters to auto-generate questions.</p>
+              <p className="font-semibold text-sm">
+                No questions in database yet
+              </p>
+              <p className="text-xs mt-1 text-gray-500">
+                Upload a PDF or reprocess existing chapters to auto-generate
+                questions.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -1687,22 +2018,26 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   <div className="question-item-header">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="app-badge app-badge-info uppercase text-[10px]">
-                        {q.question_type === "mcq" ? "Multiple Choice" : "Short Answer"}
+                        {q.question_type === "mcq"
+                          ? "Multiple Choice"
+                          : "Short Answer"}
                       </span>
                       <span
                         className={`app-badge ${
                           q.difficulty === "easy"
                             ? "app-badge-success"
                             : q.difficulty === "hard"
-                            ? "app-badge-danger"
-                            : "app-badge-warning"
+                              ? "app-badge-danger"
+                              : "app-badge-warning"
                         } uppercase text-[10px]`}
                       >
                         {q.difficulty}
                       </span>
                       {q.chapter && (
                         <span className="text-xs text-gray-500 font-medium">
-                          {q.chapter.subject?.class_level?.name || "Class"} · {q.chapter.subject?.name} · Ch {q.chapter.chapter_number}: {q.chapter.title}
+                          {q.chapter.subject?.class_level?.name || "Class"} ·{" "}
+                          {q.chapter.subject?.name} · Ch{" "}
+                          {q.chapter.chapter_number}: {q.chapter.title}
                         </span>
                       )}
                     </div>
@@ -1716,30 +2051,43 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                     </button>
                   </div>
 
-                  <h3 className="text-sm font-bold mb-3" style={{ color: c.dark }}>
+                  <h3
+                    className="text-sm font-bold mb-3"
+                    style={{ color: c.dark }}
+                  >
                     {idx + 1}. {q.question_text}
                   </h3>
 
-                  {q.question_type === "mcq" && q.options && Array.isArray(q.options) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                      {q.options.map((opt, optIdx) => {
-                        const isCorrect = opt.letter === q.correct_answer || opt.correct;
-                        return (
-                          <div
-                            key={optIdx}
-                            className={`question-mcq-option ${isCorrect ? "is-correct" : ""}`}
-                          >
-                            <div className="option-letter-badge">{opt.letter}</div>
-                            <span className="flex-1">{opt.text}</span>
-                            {isCorrect && <CheckCircle size={14} color="#306a5a" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {q.question_type === "mcq" &&
+                    q.options &&
+                    Array.isArray(q.options) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                        {q.options.map((opt, optIdx) => {
+                          const isCorrect =
+                            opt.letter === q.correct_answer || opt.correct;
+                          return (
+                            <div
+                              key={optIdx}
+                              className={`question-mcq-option ${isCorrect ? "is-correct" : ""}`}
+                            >
+                              <div className="option-letter-badge">
+                                {opt.letter}
+                              </div>
+                              <span className="flex-1">{opt.text}</span>
+                              {isCorrect && (
+                                <CheckCircle size={14} color="#306a5a" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                   {q.question_type === "short_answer" && (
-                    <div className="p-2.5 rounded-lg mb-3 text-xs" style={{ background: "#dcede6", color: "#306a5a" }}>
+                    <div
+                      className="p-2.5 rounded-lg mb-3 text-xs"
+                      style={{ background: "#dcede6", color: "#306a5a" }}
+                    >
                       <strong>Model Answer:</strong> {q.correct_answer}
                     </div>
                   )}
@@ -1763,11 +2111,15 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         <div className="dashboard-card">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-xl font-bold" style={{ ...headingFont, color: c.dark }}>
+              <h2
+                className="text-xl font-bold"
+                style={{ ...headingFont, color: c.dark }}
+              >
                 Batch PDF Ingestion Processor
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Automatically extract text and generate AI questions for existing textbook PDFs in storage
+                Automatically extract text and generate AI questions for
+                existing textbook PDFs in storage
               </p>
             </div>
             <span className="app-badge app-badge-warning">
@@ -1775,25 +2127,35 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             </span>
           </div>
 
-          <div className="p-5 rounded-xl mb-6" style={{ background: "#faf8f2", border: "1px solid #e8e4da" }}>
+          <div
+            className="p-5 rounded-xl mb-6"
+            style={{ background: "#faf8f2", border: "1px solid #e8e4da" }}
+          >
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="font-bold text-sm" style={{ color: c.dark }}>
                   One-Click Auto-Ingestion
                 </h3>
                 <p className="text-xs text-gray-600 mt-1 max-w-lg">
-                  Scans all chapters in the database with assigned PDF files that don't have extracted text or questions yet. It processes them sequentially using Gemini AI and stores questions directly into the database.
+                  Scans all chapters in the database with assigned PDF files
+                  that don't have extracted text or questions yet. It processes
+                  them sequentially using Gemini AI and stores questions
+                  directly into the database.
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-gray-500 mb-1">Batch Size</label>
+                  <label className="block text-[11px] font-bold uppercase text-gray-500 mb-1">
+                    Batch Size
+                  </label>
                   <select
                     className="form-control"
                     style={{ minHeight: 38, padding: "6px 12px" }}
                     value={batchLimit}
-                    onChange={(e) => setBatchLimit(parseInt(e.target.value, 10))}
+                    onChange={(e) =>
+                      setBatchLimit(parseInt(e.target.value, 10))
+                    }
                     disabled={isBatchProcessing}
                   >
                     <option value="1">1 Chapter</option>
@@ -1805,7 +2167,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 <div className="pt-4">
                   <PrimaryButton
                     type="button"
-                    disabled={isBatchProcessing || stats.unprocessed_chapters === 0}
+                    disabled={
+                      isBatchProcessing || stats.unprocessed_chapters === 0
+                    }
                     onClick={handleRunBatch}
                     className="flex items-center gap-2 text-sm"
                   >
@@ -1847,7 +2211,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   >
                     <div className="flex items-center gap-2">
                       <CheckCircle size={16} color="#10b981" />
-                      <span className="font-bold" style={{ color: c.dark }}>{r.title}</span>
+                      <span className="font-bold" style={{ color: c.dark }}>
+                        {r.title}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
                       {r.text_length && (
@@ -1879,12 +2245,21 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
           INSERT / EDIT SUBJECT MODAL
           ========================================================================= */}
       {newSubjectModalOpen && (
-        <div className="admin-modal-backdrop" onClick={() => setNewSubjectModalOpen(false)}>
-          <div className="admin-modal-container max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => setNewSubjectModalOpen(false)}
+        >
+          <div
+            className="admin-modal-container max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="admin-modal-header">
               <div className="flex items-center gap-2">
                 <Library size={20} color={c.primary} />
-                <h2 className="text-lg font-bold" style={{ ...headingFont, color: c.dark }}>
+                <h2
+                  className="text-lg font-bold"
+                  style={{ ...headingFont, color: c.dark }}
+                >
                   {editingSubject ? "Edit Subject" : "Insert New Subject"}
                 </h2>
               </div>
@@ -1897,15 +2272,26 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
               </button>
             </div>
 
-            <form onSubmit={handleSaveSubject} className="admin-modal-body space-y-4">
+            <form
+              onSubmit={handleSaveSubject}
+              className="admin-modal-body space-y-4"
+            >
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: c.darkGray }}>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: c.darkGray }}
+                >
                   Class Level *
                 </label>
                 <select
                   className="form-control"
                   value={newSubjectData.class_id}
-                  onChange={(e) => setNewSubjectData({ ...newSubjectData, class_id: e.target.value })}
+                  onChange={(e) =>
+                    setNewSubjectData({
+                      ...newSubjectData,
+                      class_id: e.target.value,
+                    })
+                  }
                   required
                 >
                   <option value="">Select Class</option>
@@ -1918,13 +2304,21 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: c.darkGray }}>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: c.darkGray }}
+                >
                   Educational Board
                 </label>
                 <select
                   className="form-control"
                   value={newSubjectData.board_id}
-                  onChange={(e) => setNewSubjectData({ ...newSubjectData, board_id: e.target.value })}
+                  onChange={(e) =>
+                    setNewSubjectData({
+                      ...newSubjectData,
+                      board_id: e.target.value,
+                    })
+                  }
                 >
                   {boards.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -1935,14 +2329,22 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: c.darkGray }}>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: c.darkGray }}
+                >
                   Subject Name *
                 </label>
                 <Input
                   type="text"
                   placeholder="e.g. Mathematics, Science, Sanskrit, Coding..."
                   value={newSubjectData.name}
-                  onChange={(e) => setNewSubjectData({ ...newSubjectData, name: e.target.value })}
+                  onChange={(e) =>
+                    setNewSubjectData({
+                      ...newSubjectData,
+                      name: e.target.value,
+                    })
+                  }
                   required
                 />
               </div>
@@ -1968,7 +2370,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   ) : (
                     <>
                       <Check size={16} />
-                      {editingSubject ? "Update Subject" : "Insert Subject into Database"}
+                      {editingSubject
+                        ? "Update Subject"
+                        : "Insert Subject into Database"}
                     </>
                   )}
                 </PrimaryButton>
@@ -1982,15 +2386,26 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
           INSPECT CHAPTER MODAL / DRAWER
           ========================================================================= */}
       {inspectModalOpen && (
-        <div className="admin-modal-backdrop" onClick={() => setInspectModalOpen(false)}>
-          <div className="admin-modal-container" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => setInspectModalOpen(false)}
+        >
+          <div
+            className="admin-modal-container"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="admin-modal-header">
               <div>
                 <div className="text-xs font-bold uppercase tracking-wider text-amber-600">
-                  {inspectedChapter?.class?.name} · {inspectedChapter?.subject?.name}
+                  {inspectedChapter?.class?.name} ·{" "}
+                  {inspectedChapter?.subject?.name}
                 </div>
-                <h2 className="text-lg font-bold" style={{ ...headingFont, color: c.dark }}>
-                  Ch {inspectedChapter?.chapter_number}: {inspectedChapter?.title}
+                <h2
+                  className="text-lg font-bold"
+                  style={{ ...headingFont, color: c.dark }}
+                >
+                  Ch {inspectedChapter?.chapter_number}:{" "}
+                  {inspectedChapter?.title}
                 </h2>
               </div>
 
@@ -2013,7 +2428,8 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 }`}
                 onClick={() => setInspectActiveTab("content")}
               >
-                📄 Extracted Text Content ({inspectedChapter?.text_length || 0} chars)
+                📄 Extracted Text Content ({inspectedChapter?.text_length || 0}{" "}
+                chars)
               </button>
 
               <button
@@ -2024,7 +2440,8 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 }`}
                 onClick={() => setInspectActiveTab("questions")}
               >
-                ❓ Questions in Database ({inspectedChapter?.questions?.length || 0})
+                ❓ Questions in Database (
+                {inspectedChapter?.questions?.length || 0})
               </button>
 
               {inspectedChapter?.source_file_url && (
@@ -2044,14 +2461,20 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
             <div className="admin-modal-body">
               {isLoadingInspect ? (
                 <div className="text-center py-12 text-gray-500">
-                  <RefreshCw size={24} className="pipeline-spinner mx-auto mb-2" color={c.primary} />
+                  <RefreshCw
+                    size={24}
+                    className="pipeline-spinner mx-auto mb-2"
+                    color={c.primary}
+                  />
                   <p className="text-xs">Loading chapter content...</p>
                 </div>
               ) : inspectActiveTab === "content" ? (
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-gray-500">
-                      Total extracted length: <strong>{inspectedChapter?.text_length}</strong> characters
+                      Total extracted length:{" "}
+                      <strong>{inspectedChapter?.text_length}</strong>{" "}
+                      characters
                     </span>
 
                     <button
@@ -2059,8 +2482,14 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                       onClick={handleCopyText}
                       className="px-3 py-1 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center gap-1.5 text-gray-700"
                     >
-                      {copiedText ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                      {copiedText ? "Copied to Clipboard!" : "Copy Extracted Text"}
+                      {copiedText ? (
+                        <Check size={14} color="#10b981" />
+                      ) : (
+                        <Copy size={14} />
+                      )}
+                      {copiedText
+                        ? "Copied to Clipboard!"
+                        : "Copy Extracted Text"}
                     </button>
                   </div>
 
@@ -2070,7 +2499,9 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                     </div>
                   ) : (
                     <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-center text-red-700 text-xs">
-                      No extracted text found for this chapter. Click <strong>Reprocess</strong> to extract content from the PDF file.
+                      No extracted text found for this chapter. Click{" "}
+                      <strong>Reprocess</strong> to extract content from the PDF
+                      file.
                     </div>
                   )}
                 </div>
@@ -2078,25 +2509,31 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-gray-500 font-medium">
-                      Stored Questions ({inspectedChapter?.questions?.length || 0})
+                      Stored Questions (
+                      {inspectedChapter?.questions?.length || 0})
                     </span>
 
                     <button
                       type="button"
-                      onClick={() => handleGenerateMoreQuestions(inspectedChapter.id)}
+                      onClick={() =>
+                        handleGenerateMoreQuestions(inspectedChapter.id)
+                      }
                       className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 flex items-center gap-1"
                     >
                       <Plus size={14} /> Generate More Questions
                     </button>
                   </div>
 
-                  {inspectedChapter?.questions && inspectedChapter.questions.length > 0 ? (
+                  {inspectedChapter?.questions &&
+                  inspectedChapter.questions.length > 0 ? (
                     inspectedChapter.questions.map((q, idx) => (
                       <div key={q.id || idx} className="question-item-card">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <span className="app-badge app-badge-info text-[10px]">
-                              {q.question_type === "mcq" ? "MCQ" : "Short Answer"}
+                              {q.question_type === "mcq"
+                                ? "MCQ"
+                                : "Short Answer"}
                             </span>
                             <span className="app-badge app-badge-warning text-[10px]">
                               {q.difficulty}
@@ -2104,22 +2541,30 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                           </div>
                         </div>
 
-                        <h4 className="font-bold text-xs mb-2" style={{ color: c.dark }}>
+                        <h4
+                          className="font-bold text-xs mb-2"
+                          style={{ color: c.dark }}
+                        >
                           {idx + 1}. {q.question_text}
                         </h4>
 
                         {q.options && Array.isArray(q.options) && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                             {q.options.map((opt, optIdx) => {
-                              const isCorrect = opt.letter === q.correct_answer || opt.correct;
+                              const isCorrect =
+                                opt.letter === q.correct_answer || opt.correct;
                               return (
                                 <div
                                   key={optIdx}
                                   className={`question-mcq-option ${isCorrect ? "is-correct" : ""}`}
                                 >
-                                  <div className="option-letter-badge">{opt.letter}</div>
+                                  <div className="option-letter-badge">
+                                    {opt.letter}
+                                  </div>
                                   <span className="flex-1">{opt.text}</span>
-                                  {isCorrect && <CheckCircle size={14} color="#306a5a" />}
+                                  {isCorrect && (
+                                    <CheckCircle size={14} color="#306a5a" />
+                                  )}
                                 </div>
                               );
                             })}
@@ -2135,7 +2580,8 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                     ))
                   ) : (
                     <div className="text-center py-8 bg-gray-50 rounded-xl text-xs text-gray-500">
-                      No questions saved yet. Click "Generate More Questions" or "Reprocess" to generate AI questions.
+                      No questions saved yet. Click "Generate More Questions" or
+                      "Reprocess" to generate AI questions.
                     </div>
                   )}
                 </div>
@@ -2164,10 +2610,19 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
           ADD CUSTOM QUESTION MODAL
           ========================================================================= */}
       {addQuestionModalOpen && (
-        <div className="admin-modal-backdrop" onClick={() => setAddQuestionModalOpen(false)}>
-          <div className="admin-modal-container max-w-xl" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => setAddQuestionModalOpen(false)}
+        >
+          <div
+            className="admin-modal-container max-w-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="admin-modal-header">
-              <h2 className="text-lg font-bold" style={{ ...headingFont, color: c.dark }}>
+              <h2
+                className="text-lg font-bold"
+                style={{ ...headingFont, color: c.dark }}
+              >
                 Add Custom Question to DB
               </h2>
               <button
@@ -2195,29 +2650,44 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
               className="admin-modal-body space-y-4"
             >
               <div>
-                <label className="block text-xs font-bold mb-1">Target Chapter *</label>
+                <label className="block text-xs font-bold mb-1">
+                  Target Chapter *
+                </label>
                 <select
                   className="form-control"
                   value={newQuestionData.chapter_id}
-                  onChange={(e) => setNewQuestionData({ ...newQuestionData, chapter_id: e.target.value })}
+                  onChange={(e) =>
+                    setNewQuestionData({
+                      ...newQuestionData,
+                      chapter_id: e.target.value,
+                    })
+                  }
                   required
                 >
                   <option value="">Select Chapter</option>
                   {chapters.map((ch) => (
                     <option key={ch.id} value={ch.id}>
-                      {ch.class} · {ch.subject} · Ch {ch.chapter_number}: {ch.title}
+                      {ch.class} · {ch.subject} · Ch {ch.chapter_number}:{" "}
+                      {ch.title}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold mb-1">Question Text *</label>
+                <label className="block text-xs font-bold mb-1">
+                  Question Text *
+                </label>
                 <textarea
                   className="form-control"
                   rows="2"
                   value={newQuestionData.question_text}
-                  onChange={(e) => setNewQuestionData({ ...newQuestionData, question_text: e.target.value })}
+                  onChange={(e) =>
+                    setNewQuestionData({
+                      ...newQuestionData,
+                      question_text: e.target.value,
+                    })
+                  }
                   required
                   placeholder="Enter the question..."
                 />
@@ -2225,11 +2695,18 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold mb-1">Question Type</label>
+                  <label className="block text-xs font-bold mb-1">
+                    Question Type
+                  </label>
                   <select
                     className="form-control"
                     value={newQuestionData.question_type}
-                    onChange={(e) => setNewQuestionData({ ...newQuestionData, question_type: e.target.value })}
+                    onChange={(e) =>
+                      setNewQuestionData({
+                        ...newQuestionData,
+                        question_type: e.target.value,
+                      })
+                    }
                   >
                     <option value="mcq">Multiple Choice (MCQ)</option>
                     <option value="short_answer">Short Answer</option>
@@ -2237,11 +2714,18 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold mb-1">Difficulty</label>
+                  <label className="block text-xs font-bold mb-1">
+                    Difficulty
+                  </label>
                   <select
                     className="form-control"
                     value={newQuestionData.difficulty}
-                    onChange={(e) => setNewQuestionData({ ...newQuestionData, difficulty: e.target.value })}
+                    onChange={(e) =>
+                      setNewQuestionData({
+                        ...newQuestionData,
+                        difficulty: e.target.value,
+                      })
+                    }
                   >
                     <option value="easy">Easy</option>
                     <option value="medium">Medium</option>
@@ -2252,14 +2736,21 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
 
               {newQuestionData.question_type === "mcq" ? (
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold">Options & Correct Answer *</label>
+                  <label className="block text-xs font-bold">
+                    Options & Correct Answer *
+                  </label>
                   {["A", "B", "C", "D"].map((letter, idx) => (
                     <div key={letter} className="flex items-center gap-2">
                       <input
                         type="radio"
                         name="correct_opt"
                         checked={newQuestionData.correct_answer === letter}
-                        onChange={() => setNewQuestionData({ ...newQuestionData, correct_answer: letter })}
+                        onChange={() =>
+                          setNewQuestionData({
+                            ...newQuestionData,
+                            correct_answer: letter,
+                          })
+                        }
                       />
                       <span className="text-xs font-bold w-4">{letter}</span>
                       <Input
@@ -2269,7 +2760,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                         onChange={(e) => {
                           const updated = [...newQuestionData.options];
                           updated[idx] = { letter, text: e.target.value };
-                          setNewQuestionData({ ...newQuestionData, options: updated });
+                          setNewQuestionData({
+                            ...newQuestionData,
+                            options: updated,
+                          });
                         }}
                         required
                       />
@@ -2278,12 +2772,19 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-bold mb-1">Correct / Model Answer *</label>
+                  <label className="block text-xs font-bold mb-1">
+                    Correct / Model Answer *
+                  </label>
                   <textarea
                     className="form-control"
                     rows="2"
                     value={newQuestionData.correct_answer}
-                    onChange={(e) => setNewQuestionData({ ...newQuestionData, correct_answer: e.target.value })}
+                    onChange={(e) =>
+                      setNewQuestionData({
+                        ...newQuestionData,
+                        correct_answer: e.target.value,
+                      })
+                    }
                     required
                     placeholder="Enter the model answer..."
                   />
