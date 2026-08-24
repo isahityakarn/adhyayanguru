@@ -41,26 +41,38 @@ export function get(path, options = {}) {
 }
 
 export function post(path, body, options = {}) {
+  const isFormData = body instanceof FormData;
+  const headers = { ...options.headers };
+  if (isFormData) {
+    delete headers["Content-Type"];
+    delete headers["content-type"];
+  } else if (!headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   return request(path, {
     ...options,
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+    headers,
+    body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
   });
 }
 
 export function put(path, body, options = {}) {
+  const isFormData = body instanceof FormData;
+  const headers = { ...options.headers };
+  if (isFormData) {
+    delete headers["Content-Type"];
+    delete headers["content-type"];
+  } else if (!headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   return request(path, {
     ...options,
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
+    headers,
+    body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
   });
 }
 

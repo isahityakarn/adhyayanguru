@@ -228,8 +228,12 @@ export default function AdminUploadPage() {
   // Handle Create Subject (either from modal or quick-add)
   async function handleSaveSubject(e) {
     e.preventDefault();
-    if (!newSubjectData.name || !newSubjectData.class_id) {
-      setSubjectFormError("Please enter a subject name and select a class.");
+    const missing = [];
+    if (!newSubjectData.name.trim()) missing.push("Subject Name");
+    if (!newSubjectData.class_id) missing.push("Class Level");
+
+    if (missing.length > 0) {
+      setSubjectFormError(`Validation failed: The following field(s) are required: ${missing.join(", ")}.`);
       return;
     }
 
@@ -240,7 +244,7 @@ export default function AdminUploadPage() {
       if (editingSubject) {
         // Edit mode
         await put(`/admin/subjects/${editingSubject.id}`, {
-          name: newSubjectData.name,
+          name: newSubjectData.name.trim(),
           class_id: newSubjectData.class_id,
           board_id: newSubjectData.board_id || 1,
         });
@@ -248,7 +252,7 @@ export default function AdminUploadPage() {
       } else {
         // Create mode
         const response = await post("/admin/subjects", {
-          name: newSubjectData.name,
+          name: newSubjectData.name.trim(),
           class_id: newSubjectData.class_id,
           board_id: newSubjectData.board_id || 1,
         });
@@ -273,7 +277,13 @@ export default function AdminUploadPage() {
       loadStats();
       if (selectedClass) loadSubjectsForClass(selectedClass);
     } catch (error) {
-      setSubjectFormError(error.message || "Failed to save subject.");
+      let detailedError = "";
+      if (error.errors && Object.keys(error.errors).length > 0) {
+        detailedError = Object.values(error.errors).flat().join(" ");
+      } else {
+        detailedError = error.message || "Failed to save subject.";
+      }
+      setSubjectFormError(detailedError);
     } finally {
       setIsSubmittingSubject(false);
     }
@@ -360,6 +370,10 @@ export default function AdminUploadPage() {
       setUploadError("Only PDF files are supported.");
       return;
     }
+    if (file.size > 15 * 1024 * 1024) {
+      setUploadError(`Selected file size (${(file.size / 1024 / 1024).toFixed(1)} MB) exceeds the maximum allowed limit of 15 MB. Please choose a smaller PDF.`);
+      return;
+    }
     setPdfFile(file);
     setUploadError("");
 
@@ -381,9 +395,15 @@ export default function AdminUploadPage() {
   // Handle Main PDF Upload & Ingestion
   async function handleUpload(e) {
     e.preventDefault();
+    const missing = [];
+    if (!selectedClass) missing.push("Class Level");
+    if (!selectedSubject) missing.push("Subject");
+    if (!chapterNumber) missing.push("Chapter Number");
+    if (!title.trim()) missing.push("Title");
+    if (!pdfFile) missing.push("PDF File");
 
-    if (!selectedClass || !selectedSubject || !chapterNumber || !title || !pdfFile) {
-      setUploadError("Please fill in all required fields (Class, Subject, Chapter Number, Title, and PDF).");
+    if (missing.length > 0) {
+      setUploadError(`Validation failed: The following field(s) are required: ${missing.join(", ")}.`);
       return;
     }
 
@@ -409,7 +429,7 @@ export default function AdminUploadPage() {
       formData.append("class_id", selectedClass);
       formData.append("subject_id", selectedSubject);
       formData.append("chapter_number", chapterNumber);
-      formData.append("title", title);
+      formData.append("title", title.trim());
       formData.append("description", description);
       formData.append("pdf_file", pdfFile);
       formData.append("pdf_base64", base64Data);
@@ -431,12 +451,12 @@ export default function AdminUploadPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const detailedError =
-          errorData?.errors?.pdf_file?.[0] ||
-          errorData?.errors?.title?.[0] ||
-          errorData?.errors?.subject_id?.[0] ||
-          errorData?.message ||
-          `Upload failed with status ${response.status}`;
+        let detailedError = "";
+        if (errorData?.errors && Object.keys(errorData.errors).length > 0) {
+          detailedError = Object.values(errorData.errors).flat().join(" ");
+        } else {
+          detailedError = errorData?.message || `Upload failed with status ${response.status}`;
+        }
         throw new Error(detailedError);
       }
 
