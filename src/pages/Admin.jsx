@@ -588,6 +588,66 @@ function ClassesView({ classes, loading, search, setSearch, onClass, onDownload,
   );
 }
 
+const getSubjectTheme = (subjectName = "", chapterNo = "1") => {
+  const name = String(subjectName).toLowerCase().trim();
+  const num = parseInt(chapterNo, 10) || 1;
+
+  if (name.includes("math")) {
+    return {
+      subBg: "#e0f2fe", subColor: "#0369a1", subBorder: "#bae6fd",
+      chapBg: "#0284c7", chapColor: "#ffffff"
+    };
+  }
+  if (name.includes("sci") || name.includes("bio")) {
+    return {
+      subBg: "#dcfce7", subColor: "#15803d", subBorder: "#bbf7d0",
+      chapBg: "#16a34a", chapColor: "#ffffff"
+    };
+  }
+  if (name.includes("phy")) {
+    return {
+      subBg: "#f3e8ff", subColor: "#6b21a8", subBorder: "#e9d5ff",
+      chapBg: "#7e22ce", chapColor: "#ffffff"
+    };
+  }
+  if (name.includes("chem")) {
+    return {
+      subBg: "#fef3c7", subColor: "#b45309", subBorder: "#fde68a",
+      chapBg: "#d97706", chapColor: "#ffffff"
+    };
+  }
+  if (name.includes("eng") || name.includes("lit")) {
+    return {
+      subBg: "#ffe4e6", subColor: "#be123c", subBorder: "#fecdd3",
+      chapBg: "#e11d48", chapColor: "#ffffff"
+    };
+  }
+  if (name.includes("sans") || name.includes("hindi")) {
+    return {
+      subBg: "#ffedd5", subColor: "#c2410c", subBorder: "#fed7aa",
+      chapBg: "#ea580c", chapColor: "#ffffff"
+    };
+  }
+  if (name.includes("soc") || name.includes("his") || name.includes("geo") || name.includes("civ")) {
+    return {
+      subBg: "#ccfbf1", subColor: "#0f766e", subBorder: "#99f6e4",
+      chapBg: "#0d9488", chapColor: "#ffffff"
+    };
+  }
+
+  const palettes = [
+    { subBg: "#eff6ff", subColor: "#1d4ed8", subBorder: "#bfdbfe", chapBg: "#2563eb", chapColor: "#ffffff" },
+    { subBg: "#f5f3ff", subColor: "#5b21b6", subBorder: "#ddd6fe", chapBg: "#6d28d9", chapColor: "#ffffff" },
+    { subBg: "#f0fdf4", subColor: "#166534", subBorder: "#bbf7d0", chapBg: "#15803d", chapColor: "#ffffff" },
+    { subBg: "#fff7ed", subColor: "#9a3412", subBorder: "#ffedd5", chapBg: "#c2410c", chapColor: "#ffffff" },
+    { subBg: "#fdf2f8", subColor: "#9d174d", subBorder: "#fbcfe8", chapBg: "#be185d", chapColor: "#ffffff" },
+    { subBg: "#ecfdf5", subColor: "#047857", subBorder: "#a7f3d0", chapBg: "#059669", chapColor: "#ffffff" },
+  ];
+
+  const charCodeSum = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) + num;
+  return palettes[charCodeSum % palettes.length];
+};
+
 function PdfView({
   pdfs,
   classes,
@@ -729,34 +789,70 @@ function PdfView({
           <tbody>
             {loading ? (
               <tr><td colSpan="9"><LoadingRows /></td></tr>
-            ) : displayPdfs.map((pdf) => (
-              <tr key={pdf.id}>
-                <td><input type="checkbox" checked={selectedPdfs.includes(pdf.id)} onChange={() => togglePdf(pdf.id)} aria-label={`Select ${pdf.name}`} /></td>
-                <td>
-                  <button className="admin-table-title" onClick={() => onPreview(pdf)}>
-                    <span className="admin-pdf-icon"><FileText size={16} /></span>
-                    <strong>{pdf.name}</strong>
-                  </button>
-                </td>
-                <td>{pdf.class_name}</td>
-                <td>{pdf.subject_name}</td>
-                <td>
-                  <span className="admin-pill available" style={{ fontWeight: "700", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}>
-                    Ch {pdf.chapter_number || pdf.chapter_no || pdf.chapter_id || "1"}
-                  </span>
-                </td>
-                <td><strong>{pdf.chapter_name || pdf.name}</strong></td>
-                <td>{pdf.file_size}</td>
-                <td>{pdf.updated_at}</td>
-                <td>
-                  <div className="admin-row-actions" style={{ justifyContent: "flex-end" }}>
-                    <button title="Modify / Replace PDF for this Subject" onClick={() => onEditPdf(pdf)}><Edit size={16} /></button>
-                    <button title="Preview PDF" onClick={() => onPreview(pdf)}><ChevronRight size={16} /></button>
-                    <button title="Download PDF" onClick={() => onDownload(pdf.id)}><Download size={16} /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            ) : displayPdfs.map((pdf) => {
+              const chapterNo = pdf.chapter_number || pdf.chapter_no || pdf.chapter_id || "1";
+              const theme = getSubjectTheme(pdf.subject_name, chapterNo);
+              return (
+                <tr key={pdf.id}>
+                  <td><input type="checkbox" checked={selectedPdfs.includes(pdf.id)} onChange={() => togglePdf(pdf.id)} aria-label={`Select ${pdf.name}`} /></td>
+                  <td>
+                    <button className="admin-table-title" onClick={() => onPreview(pdf)}>
+                      <span className="admin-pdf-icon" style={{ background: theme.subBg, color: theme.subColor }}>
+                        <FileText size={16} />
+                      </span>
+                      <strong>{pdf.name}</strong>
+                    </button>
+                  </td>
+                  <td>
+                    <span style={{ fontWeight: "600", color: "#475569" }}>
+                      {pdf.class_name}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      background: theme.subBg,
+                      color: theme.subColor,
+                      border: `1px solid ${theme.subBorder}`
+                    }}>
+                      {pdf.subject_name || "General"}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: "4px 12px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: "800",
+                      background: theme.chapBg,
+                      color: theme.chapColor,
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+                      letterSpacing: "0.3px"
+                    }}>
+                      Ch {chapterNo}
+                    </span>
+                  </td>
+                  <td><strong>{pdf.chapter_name || pdf.name}</strong></td>
+                  <td>{pdf.file_size}</td>
+                  <td>{pdf.updated_at}</td>
+                  <td>
+                    <div className="admin-row-actions" style={{ justifyContent: "flex-end" }}>
+                      <button title="Modify / Replace PDF for this Subject" onClick={() => onEditPdf(pdf)}><Edit size={16} /></button>
+                      <button title="Preview PDF" onClick={() => onPreview(pdf)}><ChevronRight size={16} /></button>
+                      <button title="Download PDF" onClick={() => onDownload(pdf.id)}><Download size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {!loading && !displayPdfs.length && <EmptyState label={pdfClassFilter ? `No PDF materials found for ${pdfClassFilter.name}.` : "No PDF materials found."} />}
