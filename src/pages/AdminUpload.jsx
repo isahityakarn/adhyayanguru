@@ -33,12 +33,18 @@ import { Input, PrimaryButton, Select } from "../components/UI";
 import { get, post, del, put } from "../utils/api";
 import { c, headingFont, displayFont } from "../utils/theme";
 
-export default function AdminUploadPage() {
+export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   // Active tab: 'upload' | 'chapters' | 'subjects' | 'questions' | 'batch'
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "upload");
+  const [activeTab, setActiveTab] = useState(initialTab || searchParams.get("tab") || "upload");
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Initial reference data
   const [classes, setClasses] = useState([]);
@@ -58,13 +64,17 @@ export default function AdminUploadPage() {
   });
 
   // Upload Form State
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedClass, setSelectedClass] = useState(
+    () => localStorage.getItem("last_admin_upload_class_id") || ""
+  );
+  const [selectedSubject, setSelectedSubject] = useState(
+    () => localStorage.getItem("last_admin_upload_subject_id") || ""
+  );
   const [chapterNumber, setChapterNumber] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [pdfFile, setPdfFile] = useState(null);
-  const [questionCount, setQuestionCount] = useState(6);
+  const [questionCount, setQuestionCount] = useState(10);
   const [difficulty, setDifficulty] = useState("mixed");
 
   // Drag and drop state
@@ -160,6 +170,7 @@ export default function AdminUploadPage() {
   // When class changes in upload form, reload subjects
   useEffect(() => {
     if (selectedClass) {
+      localStorage.setItem("last_admin_upload_class_id", selectedClass);
       loadSubjectsForClass(selectedClass);
     } else {
       setSubjects([]);
@@ -167,12 +178,26 @@ export default function AdminUploadPage() {
     }
   }, [selectedClass]);
 
+  useEffect(() => {
+    if (selectedSubject) {
+      localStorage.setItem("last_admin_upload_subject_id", selectedSubject);
+    }
+  }, [selectedSubject]);
+
   // Load Initial Data
   async function loadInitialData() {
     try {
       const response = await get("/admin/upload");
-      setClasses(response.classes || []);
+      const fetchedClasses = response.classes || [];
+      setClasses(fetchedClasses);
       setBoards(response.boards || [{ id: 1, name: "CBSE" }, { id: 2, name: "ICSE" }]);
+
+      const savedClassId = localStorage.getItem("last_admin_upload_class_id");
+      if (savedClassId && fetchedClasses.some((c) => String(c.id) === String(savedClassId))) {
+        setSelectedClass(String(savedClassId));
+      } else if (fetchedClasses.length > 0 && !selectedClass) {
+        setSelectedClass(String(fetchedClasses[0].id));
+      }
     } catch (error) {
       console.error("Failed to load initial upload data:", error);
     }
@@ -192,7 +217,19 @@ export default function AdminUploadPage() {
   async function loadSubjectsForClass(classId) {
     try {
       const response = await get(`/admin/subjects?class_id=${classId}`);
-      setSubjects(response.subjects || []);
+      const fetchedSubjects = response.subjects || [];
+      setSubjects(fetchedSubjects);
+
+      const savedSubjectId = localStorage.getItem("last_admin_upload_subject_id");
+      if (savedSubjectId && fetchedSubjects.some((s) => String(s.id) === String(savedSubjectId))) {
+        setSelectedSubject(String(savedSubjectId));
+      } else if (fetchedSubjects.length > 0) {
+        if (!fetchedSubjects.some((s) => String(s.id) === String(selectedSubject))) {
+          setSelectedSubject(String(fetchedSubjects[0].id));
+        }
+      } else {
+        setSelectedSubject("");
+      }
     } catch (error) {
       console.error("Failed to load subjects for class:", error);
     }
@@ -862,19 +899,7 @@ export default function AdminUploadPage() {
                   </div>
                 </div>
 
-                {/* Description */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: c.darkGray }}>
-                    Description / Key Learning Objectives (Optional)
-                  </label>
-                  <textarea
-                    className="form-control"
-                    rows="2"
-                    placeholder="Brief overview or topics covered..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </div>
+
 
                 {/* AI Configuration Preferences */}
                 <div className="p-4 rounded-xl" style={{ background: "#faf8f2", border: "1px solid #e8e4da" }}>
@@ -895,10 +920,10 @@ export default function AdminUploadPage() {
                         value={questionCount}
                         onChange={(e) => setQuestionCount(parseInt(e.target.value, 10))}
                       >
-                        <option value="4">4 Questions (Fast)</option>
-                        <option value="6">6 Questions (Recommended: 4 MCQs + 2 Short)</option>
+                        <option value="10">10 Questions (Recommended: MCQs & Conceptual Questions)</option>
                         <option value="8">8 Questions (Comprehensive)</option>
-                        <option value="10">10 Questions (Extensive)</option>
+                        <option value="6">6 Questions (Standard)</option>
+                        <option value="4">4 Questions (Fast)</option>
                       </select>
                     </div>
 
@@ -1293,7 +1318,19 @@ export default function AdminUploadPage() {
                         <div className="table-actions-cell justify-end">
                           <button
                             className="action-icon-btn"
-                            title="Edit Subject"
+                            title="Upload / Modify PDF for Subject"
+                            onClick={() => {
+                              setSelectedClass(String(sub.class_id));
+                              setSelectedSubject(String(sub.id));
+                              handleTabChange("upload");
+                            }}
+                          >
+                            <Upload size={14} />
+                          </button>
+
+                          <button
+                            className="action-icon-btn"
+                            title="Edit Subject Details"
                             onClick={() => {
                               setEditingSubject(sub);
                               setIsQuickSubjectModal(false);
@@ -1480,6 +1517,20 @@ export default function AdminUploadPage() {
 
                       <td style={{ textAlign: "right" }}>
                         <div className="table-actions-cell justify-end">
+                          <button
+                            className="action-icon-btn"
+                            title="Upload / Modify PDF for Chapter"
+                            onClick={() => {
+                              if (ch.class_id) setSelectedClass(String(ch.class_id));
+                              if (ch.subject_id) setSelectedSubject(String(ch.subject_id));
+                              if (ch.chapter_number) setChapterNumber(String(ch.chapter_number));
+                              if (ch.title) setTitle(ch.title);
+                              handleTabChange("upload");
+                            }}
+                          >
+                            <Upload size={14} />
+                          </button>
+
                           <button
                             className="action-icon-btn"
                             title="Inspect Text & DB Questions"
