@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Square, BookOpen, Maximize2, PanelLeftClose, Settings, RefreshCw, X, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Square, BookOpen, Maximize2, PanelLeftClose, Settings, RefreshCw, X, CheckCircle2, AlertTriangle, ExternalLink, Sparkles, Sliders } from "lucide-react";
 import { Input, PrimaryButton } from "../components/UI";
-import { speakText, stopSpeech, previewVoice, AVAILABLE_VOICES } from "../utils/coquiTts";
+import { speakText, stopSpeech, previewVoice, speakWithEdgeTts, HF_EDGE_TTS_URL, AVAILABLE_VOICES } from "../utils/coquiTts";
 import { get, post } from "../utils/api";
+
 
 
 
@@ -75,9 +76,12 @@ function getUserLanguage() {
   }
 }
 
-function getGreetingMessage() {
+function getGreetingMessage(voiceId = "edge_tts_hindi_female") {
   const hour = new Date().getHours();
   const isHindi = getUserLanguage().startsWith("hi");
+  const isMale = voiceId === "edge_tts_hindi_male";
+  const name = isMale ? (isHindi ? "अध्ययन" : "Adhyayan") : (isHindi ? "संस्कृति" : "Sanskriti");
+  const verbSuffix = isMale ? "सकता हूँ" : "सकती हूँ";
   let greeting;
 
   if (hour >= 5 && hour < 12) {
@@ -89,12 +93,12 @@ function getGreetingMessage() {
   }
 
   return isHindi
-    ? `${greeting} मैं अध्ययन हूँ। आज मैं आपकी पढ़ाई में कैसे मदद कर सकता हूँ?`
-    : `${greeting}! I am Adhyayan. How can I help you with your studies today?`;
+    ? `${greeting}! मैं ${name} हूँ। आज मैं आपकी पढ़ाई में कैसे मदद कर ${verbSuffix}?`
+    : `${greeting}! I am ${name}. How can I help you with your studies today?`;
 }
 
-function getInitialMessages() {
-  return [{ from: "ai", text: getGreetingMessage() }];
+function getInitialMessages(voiceId = "edge_tts_hindi_female") {
+  return [{ from: "ai", text: getGreetingMessage(voiceId) }];
 }
 
 function getTutorReply(response) {
@@ -232,12 +236,18 @@ export default function TutorChatPage() {
   const [viewerMethod, setViewerMethod] = useState("direct"); // direct, google, mozilla
   const [isPadHidden, setIsPadHidden] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [ttsEngine, setTtsEngine] = useState("browser");
-  const [selectedVoiceId, setSelectedVoiceId] = useState("browser_hindi_male");
+  const [ttsEngine, setTtsEngine] = useState("edge_tts");
+  const [selectedVoiceId, setSelectedVoiceId] = useState("edge_tts_hindi_female");
   const [previewingVoiceId, setPreviewingVoiceId] = useState(null);
   const [showTtsModal, setShowTtsModal] = useState(false);
+  const [modalTab, setModalTab] = useState("voices"); // "voices" | "hf_space" | "tester"
+  const [customTestText, setCustomTestText] = useState("नमस्ते! मैं संस्कृति हूँ। आज हम गणित और विज्ञान पढ़ेंगे।");
+  const [testVoiceSpeaker, setTestVoiceSpeaker] = useState("hi-IN-SwaraNeural - hi-IN (Female)");
+  const [testRate, setTestRate] = useState(0);
+  const [testPitch, setTestPitch] = useState(0);
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState(null);
+
   const recognitionRef = useRef(null);
   const abortControllerRef = useRef(null);
 
@@ -507,9 +517,12 @@ export default function TutorChatPage() {
           // Add a context-aware greeting when chapter loads
           const chapterLabel = getChapterLabel(loadedChapter, selectedChapter);
           const isHindi = getUserLanguage().startsWith("hi");
+          const isMale = selectedVoiceId === "edge_tts_hindi_male";
+          const tutorName = isMale ? (isHindi ? "अध्ययन" : "Adhyayan") : (isHindi ? "संस्कृति" : "Sanskriti");
+          const verbExplain = isMale ? "समझाऊंगा" : "समझाऊंगी";
           const greeting = isHindi
-            ? `मैं अध्ययन हूँ। मैं देख रहा हूँ कि आपने ${chapterLabel} चुना है। मैं इस अध्याय में आपकी मदद के लिए तैयार हूँ। आप मुझसे कोई भी प्रश्न पूछ सकते हैं या कह सकते हैं "इस अध्याय को पढ़ो" और मैं मुख्य अवधारणाओं को समझाऊंगा।`
-            : `I am Adhyayan. I can see you've selected ${chapterLabel}. I'm here to help you understand this chapter. You can ask me any questions, or say "read this chapter" and I'll explain the key concepts!`;
+            ? `मैं ${tutorName} हूँ। मैं देख रहा हूँ कि आपने ${chapterLabel} चुना है। मैं इस अध्याय में आपकी मदद के लिए तैयार हूँ। आप मुझसे कोई भी प्रश्न पूछ सकते हैं या कह सकते हैं "इस अध्याय को पढ़ो" और मैं मुख्य अवधारणाओं को ${verbExplain}!`
+            : `I am ${tutorName}. I can see you've selected ${chapterLabel}. I'm here to help you understand this chapter. You can ask me any questions, or say "read this chapter" and I'll explain the key concepts!`;
           
           setMessages([{ from: "ai", text: greeting }]);
         }
@@ -1029,7 +1042,7 @@ export default function TutorChatPage() {
         <div className="tutor-messages">
           {messages.map((m, i) => (
             <div key={i} className={`tutor-message ${m.from === "user" ? "user-message" : "ai-message"}`}>
-              <div className="tutor-message-label">{m.from === "ai" ? "Adhyayan" : "You"}</div>
+              <div className="tutor-message-label">{m.from === "ai" ? (selectedVoiceId === "edge_tts_hindi_female" ? "Sanskriti" : "Adhyayan") : "You"}</div>
               {m.from === "ai" ? (
                 <div className="tutor-message-markdown">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -1052,7 +1065,7 @@ export default function TutorChatPage() {
               )}
             </div>
           ))}
-          {isSending && <div className="tutor-message ai-message">Adhyayan is thinking...</div>}
+          {isSending && <div className="tutor-message ai-message">{selectedVoiceId === "edge_tts_hindi_female" ? "Sanskriti" : "Adhyayan"} is thinking...</div>}
         </div>
 
         <div className="tutor-composer">
@@ -1098,140 +1111,384 @@ export default function TutorChatPage() {
 
       {showTtsModal && (
         <div className="admin-modal-backdrop" onClick={() => setShowTtsModal(false)}>
-          <div className="admin-modal-container" style={{ maxWidth: "620px", width: "92%" }} onClick={(e) => e.stopPropagation()}>
-            <div className="admin-modal-header" style={{ padding: "16px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", color: "#182746", fontSize: "16px" }}>
-                <Volume2 size={20} color="#e07a3f" />
-                <span>Voice Preview & Engine Selection (आवाज पूर्वावलोकन)</span>
+          <div className="admin-modal-container" style={{ maxWidth: "860px", width: "95%" }} onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header" style={{ padding: "16px 22px", background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", color: "#ffffff", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: "700", fontSize: "16px" }}>
+                <Volume2 size={22} color="#e07a3f" />
+                <span>Edge TTS & Voice Selection Modal (आवाज़ इंजन पूर्वावलोकन)</span>
+                <span style={{ fontSize: "11px", background: "#e07a3f", color: "#fff", padding: "2px 10px", borderRadius: "12px", fontWeight: "600" }}>
+                  HF Space: innoai/Edge-TTS
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowTtsModal(false)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#687083" }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
-            <div className="admin-modal-body" style={{ padding: "20px", maxHeight: "70vh", overflowY: "auto" }}>
-              <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#475569" }}>
-                Listen to live voice previews for each engine (Coqui XTTS-v2 / Voice.ai / Hindi Natural) and set your preferred AI tutor voice:
-              </p>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {AVAILABLE_VOICES.map((voice) => {
-                  const isSelected = selectedVoiceId === voice.id;
-                  const isPreviewing = previewingVoiceId === voice.id;
+            {/* Modal Navigation Tabs */}
+            <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", padding: "0 20px" }}>
+              <button
+                type="button"
+                onClick={() => setModalTab("voices")}
+                style={{
+                  padding: "12px 18px",
+                  border: "none",
+                  borderBottom: modalTab === "voices" ? "3px solid #e07a3f" : "3px solid transparent",
+                  background: "none",
+                  fontWeight: modalTab === "voices" ? "700" : "600",
+                  color: modalTab === "voices" ? "#e07a3f" : "#64748b",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <Volume2 size={15} />
+                <span>Voices Catalog (आवाज़ सूची)</span>
+              </button>
 
-                  return (
-                    <div
-                      key={voice.id}
-                      style={{
-                        padding: "16px",
-                        borderRadius: "12px",
-                        border: isSelected ? "2px solid #059669" : "1px solid #cbd5e1",
-                        background: isSelected ? "#f0fdf4" : "#ffffff",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <input
-                            type="radio"
-                            id={`voice-radio-${voice.id}`}
-                            name="activeVoice"
-                            checked={isSelected}
-                            onChange={() => {
-                              setSelectedVoiceId(voice.id);
-                              setTtsEngine(voice.engine);
-                            }}
-                            style={{ cursor: "pointer", accentColor: "#059669", width: "16px", height: "16px" }}
-                          />
-                          <label htmlFor={`voice-radio-${voice.id}`} style={{ fontWeight: "700", color: "#0f172a", fontSize: "14px", cursor: "pointer" }}>
-                            {voice.name}
-                          </label>
-                        </div>
-                        <span style={{
-                          fontSize: "11px",
-                          fontWeight: "600",
-                          padding: "2px 8px",
-                          borderRadius: "12px",
-                          color: voice.badgeColor,
-                          background: voice.badgeBg
-                        }}>
-                          {voice.badge}
-                        </span>
-                      </div>
+              <button
+                type="button"
+                onClick={() => setModalTab("hf_space")}
+                style={{
+                  padding: "12px 18px",
+                  border: "none",
+                  borderBottom: modalTab === "hf_space" ? "3px solid #e07a3f" : "3px solid transparent",
+                  background: "none",
+                  fontWeight: modalTab === "hf_space" ? "700" : "600",
+                  color: modalTab === "hf_space" ? "#e07a3f" : "#64748b",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <ExternalLink size={15} />
+                <span>Hugging Face Live Space</span>
+              </button>
 
-                      <p style={{ margin: "0 0 10px 24px", fontSize: "12px", color: "#64748b" }}>
-                        {voice.description}
-                      </p>
+              <button
+                type="button"
+                onClick={() => setModalTab("tester")}
+                style={{
+                  padding: "12px 18px",
+                  border: "none",
+                  borderBottom: modalTab === "tester" ? "3px solid #e07a3f" : "3px solid transparent",
+                  background: "none",
+                  fontWeight: modalTab === "tester" ? "700" : "600",
+                  color: modalTab === "tester" ? "#e07a3f" : "#64748b",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <Sliders size={15} />
+                <span>Custom Voice Synthesizer</span>
+              </button>
+            </div>
 
-                      <div style={{
-                        marginLeft: "24px",
-                        padding: "10px 12px",
-                        background: isSelected ? "#ffffff" : "#f8fafc",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                        color: "#334155",
-                        marginBottom: "10px"
-                      }}>
-                        💬 Sample: <em>"{voice.sampleText}"</em>
-                      </div>
+            <div className="admin-modal-body" style={{ padding: "20px", maxHeight: "72vh", overflowY: "auto" }}>
+              {modalTab === "voices" && (
+                <>
+                  <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#475569" }}>
+                    Select your preferred AI tutor voice engine. ⚡ <strong>Edge TTS Neural Voices (Swara & Madhur)</strong> are hosted on HuggingFace Space (<code>innoai/Edge-TTS-Text-to-Speech</code>) for high-quality natural Hindi speech synthesis:
+                  </p>
 
-                      <div style={{ marginLeft: "24px", display: "flex", gap: "8px" }}>
-                        <button
-                          type="button"
-                          onClick={() => handlePlayVoicePreview(voice)}
-                          disabled={isPreviewing}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {AVAILABLE_VOICES.map((voice) => {
+                      const isSelected = selectedVoiceId === voice.id;
+                      const isPreviewing = previewingVoiceId === voice.id;
+
+                      return (
+                        <div
+                          key={voice.id}
                           style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            padding: "6px 14px",
-                            borderRadius: "6px",
-                            background: isPreviewing ? "#3b82f6" : "#e07a3f",
-                            color: "#ffffff",
-                            border: "none",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            cursor: isPreviewing ? "default" : "pointer"
+                            padding: "16px",
+                            borderRadius: "12px",
+                            border: isSelected ? "2px solid #059669" : "1px solid #cbd5e1",
+                            background: isSelected ? "#f0fdf4" : "#ffffff",
+                            transition: "all 0.2s ease"
                           }}
                         >
-                          {isPreviewing ? <RefreshCw size={13} className="pipeline-spinner" /> : <Volume2 size={13} />}
-                          <span>{isPreviewing ? "Playing Preview..." : "▶ Play Voice Preview"}</span>
-                        </button>
-
-                        {!isSelected && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedVoiceId(voice.id);
-                              setTtsEngine(voice.engine);
-                            }}
-                            style={{
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              background: "#ffffff",
-                              color: "#059669",
-                              border: "1px solid #059669",
-                              fontSize: "12px",
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <input
+                                type="radio"
+                                id={`voice-radio-${voice.id}`}
+                                name="activeVoice"
+                                checked={isSelected}
+                                onChange={() => {
+                                  setSelectedVoiceId(voice.id);
+                                  setTtsEngine(voice.engine);
+                                }}
+                                style={{ cursor: "pointer", accentColor: "#059669", width: "16px", height: "16px" }}
+                              />
+                              <label htmlFor={`voice-radio-${voice.id}`} style={{ fontWeight: "700", color: "#0f172a", fontSize: "14px", cursor: "pointer" }}>
+                                {voice.name}
+                              </label>
+                            </div>
+                            <span style={{
+                              fontSize: "11px",
                               fontWeight: "600",
-                              cursor: "pointer"
-                            }}
-                          >
-                            Set Active Voice
-                          </button>
-                        )}
+                              padding: "3px 10px",
+                              borderRadius: "12px",
+                              color: voice.badgeColor,
+                              background: voice.badgeBg
+                            }}>
+                              {voice.badge}
+                            </span>
+                          </div>
+
+                          <p style={{ margin: "0 0 10px 24px", fontSize: "12px", color: "#64748b" }}>
+                            {voice.description}
+                          </p>
+
+                          <div style={{
+                            marginLeft: "24px",
+                            padding: "10px 12px",
+                            background: isSelected ? "#ffffff" : "#f8fafc",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            color: "#334155",
+                            marginBottom: "10px"
+                          }}>
+                            💬 Sample: <em>"{voice.sampleText}"</em>
+                          </div>
+
+                          <div style={{ marginLeft: "24px", display: "flex", gap: "8px" }}>
+                            <button
+                              type="button"
+                              onClick={() => handlePlayVoicePreview(voice)}
+                              disabled={isPreviewing}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "6px 14px",
+                                borderRadius: "6px",
+                                background: isPreviewing ? "#3b82f6" : "#e07a3f",
+                                color: "#ffffff",
+                                border: "none",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                cursor: isPreviewing ? "default" : "pointer"
+                              }}
+                            >
+                              {isPreviewing ? <RefreshCw size={13} className="pipeline-spinner" /> : <Volume2 size={13} />}
+                              <span>{isPreviewing ? "Playing Preview..." : "▶ Play Voice Preview"}</span>
+                            </button>
+
+                            {!isSelected && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedVoiceId(voice.id);
+                                  setTtsEngine(voice.engine);
+                                }}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: "6px",
+                                  background: "#ffffff",
+                                  color: "#059669",
+                                  border: "1px solid #059669",
+                                  fontSize: "12px",
+                                  fontWeight: "600",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                Set Active Voice
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {modalTab === "hf_space" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div style={{
+                    padding: "12px 16px",
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: "10px",
+                    display: "flex",
+                    justify: "space-between",
+                    alignItems: "center"
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: "700", color: "#1e40af", fontSize: "13px" }}>
+                        🤗 HuggingFace Space: innoai/Edge-TTS-Text-to-Speech
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#3b82f6", marginTop: "2px" }}>
+                        Directly integrated live Gradio interface for Microsoft Edge Text-to-Speech (Hindi voices & options).
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                    <a
+                      href="https://huggingface.co/spaces/innoai/Edge-TTS-Text-to-Speech"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "7px 14px",
+                        background: "#2563eb",
+                        color: "#ffffff",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        textDecoration: "none"
+                      }}
+                    >
+                      <span>Open on HuggingFace</span>
+                      <ExternalLink size={13} />
+                    </a>
+                  </div>
+
+                  <iframe
+                    src="https://innoai-edge-tts-text-to-speech.hf.space"
+                    title="Hugging Face Edge-TTS Space"
+                    style={{
+                      width: "100%",
+                      height: "540px",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "12px",
+                      background: "#ffffff"
+                    }}
+                  />
+                </div>
+              )}
+
+              {modalTab === "tester" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{
+                    padding: "12px 16px",
+                    background: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: "10px",
+                    fontSize: "13px",
+                    color: "#166534"
+                  }}>
+                    ✨ <strong>Edge TTS Speech Synthesizer:</strong> Type any text in Hindi or English, choose pitch/rate adjustments, and synthesize natural speech in real time!
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>Target Hindi Voice</label>
+                    <select
+                      value={testVoiceSpeaker}
+                      onChange={(e) => setTestVoiceSpeaker(e.target.value)}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        color: "#0f172a"
+                      }}
+                    >
+                      <option value="hi-IN-MadhurNeural - hi-IN (Male)">hi-IN-MadhurNeural - Hindi Male Teacher (अध्ययन)</option>
+                      <option value="hi-IN-SwaraNeural - hi-IN (Female)">hi-IN-SwaraNeural - Hindi Female (संस्कृति)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>
+                        Speech Rate Adjustment (%): <strong>{Number(testRate) > 0 ? `+${testRate}` : testRate}%</strong>
+                      </label>
+                      <input
+                        type="range"
+                        min="-50"
+                        max="50"
+                        value={testRate}
+                        onChange={(e) => setTestRate(e.target.value)}
+                        style={{ accentColor: "#e07a3f", cursor: "pointer" }}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>
+                        Pitch Adjustment (Hz): <strong>{Number(testPitch) > 0 ? `+${testPitch}` : testPitch} Hz</strong>
+                      </label>
+                      <input
+                        type="range"
+                        min="-20"
+                        max="20"
+                        value={testPitch}
+                        onChange={(e) => setTestPitch(e.target.value)}
+                        style={{ accentColor: "#e07a3f", cursor: "pointer" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>Text to Synthesize</label>
+                    <textarea
+                      rows={3}
+                      value={customTestText}
+                      onChange={(e) => setCustomTestText(e.target.value)}
+                      placeholder="हिंदी पाठ लिखें..."
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontFamily: "inherit"
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        speakText(customTestText, {
+                          engine: "edge_tts",
+                          speaker: testVoiceSpeaker,
+                          rate: Number(testRate),
+                          pitch: Number(testPitch),
+                          onStart: () => setIsSpeaking(true),
+                          onEnd: () => setIsSpeaking(false),
+                          onError: () => setIsSpeaking(false),
+                        });
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "10px 20px",
+                        background: "#e07a3f",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontWeight: "700",
+                        fontSize: "13px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      <Volume2 size={16} />
+                      <span>⚡ Synthesize & Speak with Edge TTS</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="admin-modal-footer" style={{ padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
+
+            <div className="admin-modal-footer" style={{ padding: "14px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
               <div style={{ fontSize: "12px", color: "#059669", fontWeight: "600" }}>
-                ✓ Selected: {AVAILABLE_VOICES.find(v => v.id === selectedVoiceId)?.name}
+                ✓ Active Voice: {AVAILABLE_VOICES.find(v => v.id === selectedVoiceId)?.name}
               </div>
               <PrimaryButton onClick={() => setShowTtsModal(false)}>
                 Done & Save Voice
@@ -1240,6 +1497,7 @@ export default function TutorChatPage() {
           </div>
         </div>
       )}
+
     </div>
   </div>
   );

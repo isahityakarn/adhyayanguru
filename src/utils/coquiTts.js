@@ -1,10 +1,11 @@
 /**
  * Voice Synthesis Engine Utility
- * Supports Coqui TTS (XTTS-v2 Neural Voice), Voice.ai HD Neural Cloud,
- * and Browser Hindi Natural Web Speech API.
+ * Supports Edge TTS (HuggingFace innoai/Edge-TTS-Text-to-Speech Neural Voice),
+ * Coqui TTS (XTTS-v2 Neural Voice), and Browser Hindi Natural Web Speech API.
  */
 
 export const DEFAULT_COQUI_URL = import.meta.env.VITE_COQUI_TTS_SERVER || "http://localhost:5002";
+export const HF_EDGE_TTS_URL = "https://innoai-edge-tts-text-to-speech.hf.space";
 
 let currentAudio = null;
 let currentAbortController = null;
@@ -25,56 +26,30 @@ const maleKeywords = [
  */
 export const AVAILABLE_VOICES = [
   {
-    id: "browser_hindi_natural",
-    name: "Google Swara / Hindi Female Voice (महिला)",
-    provider: "Google Swara Web Speech",
-    engine: "browser",
+    id: "edge_tts_hindi_female",
+    name: "Edge TTS Swara / Hindi Female (संस्कृति)",
+    provider: "HuggingFace innoai / Edge-TTS",
+    engine: "edge_tts",
     language: "hi",
-    speaker: "Hindi Female",
-    sampleText: "नमस्ते! मैं आपकी पढ़ाई में सहायता करने के लिए गूगल स्वरा आवाज हूँ।",
-    badge: "🇮🇳 Google Swara (Female)",
-    badgeColor: "#d97706",
-    badgeBg: "#fffbeb",
-    description: "Google Swara & Microsoft Natural Indian female voice engine optimized for Devanagari."
-  },
-  {
-    id: "browser_hindi_male",
-    name: "Google / Microsoft Hindi Male Teacher (पुरुष)",
-    provider: "Browser Web Speech",
-    engine: "browser",
-    language: "hi",
-    speaker: "Hindi Male",
-    sampleText: "नमस्ते! आज हम गणित और विज्ञान का नया अध्याय विस्तार से पढ़ेंगे।",
-    badge: "👨‍🏫 Hindi Male",
+    speaker: "hi-IN-SwaraNeural - hi-IN (Female)",
+    sampleText: "नमस्ते! मैं संस्कृति हूँ। माइक्रोसॉफ्ट एज टीटीएस की प्राकृतिक स्वरा आवाज़ में आपका स्वागत है।",
+    badge: "⚡ Edge TTS Swara (Female)",
     badgeColor: "#2563eb",
     badgeBg: "#eff6ff",
-    description: "Deep, natural Indian male instructional voice with adjusted pitch for academic lectures."
+    description: "Ultra-clear Microsoft Edge Neural voice (Swara - Sanskriti) hosted on HuggingFace Space."
   },
   {
-    id: "coqui_xtts_hindi_female",
-    name: "Coqui XTTS-v2 Hindi Natural (Female)",
-    provider: "Coqui TTS",
-    engine: "coqui",
+    id: "edge_tts_hindi_male",
+    name: "Edge TTS Madhur / Hindi Male Teacher (अध्ययन)",
+    provider: "HuggingFace innoai / Edge-TTS",
+    engine: "edge_tts",
     language: "hi",
-    speaker: "Hindi Female",
-    sampleText: "नमस्ते! मैं आपकी पढ़ाई और परीक्षा की तैयारी में सहायता करने के लिए तैयार हूँ।",
-    badge: "🐸 Coqui XTTS-v2",
-    badgeColor: "#059669",
-    badgeBg: "#ecfdf5",
-    description: "Ultra-realistic open-source neural voice model trained on Hindi speech datasets."
-  },
-  {
-    id: "coqui_xtts_hindi_male",
-    name: "Coqui XTTS-v2 Hindi Teacher (Male)",
-    provider: "Coqui TTS",
-    engine: "coqui",
-    language: "hi",
-    speaker: "Hindi Male",
-    sampleText: "नमस्ते! आज हम गणित और विज्ञान का नया अध्याय विस्तार से पढ़ेंगे।",
-    badge: "🐸 Coqui XTTS-v2",
-    badgeColor: "#059669",
-    badgeBg: "#ecfdf5",
-    description: "Deep, clear male instructional voice ideal for academic lectures."
+    speaker: "hi-IN-MadhurNeural - hi-IN (Male)",
+    sampleText: "नमस्ते! मैं अध्ययन हूँ। आज हम गणित और विज्ञान का नया अध्याय विस्तार से पढ़ेंगे।",
+    badge: "👨‍🏫 Edge TTS Madhur (Male)",
+    badgeColor: "#7c3aed",
+    badgeBg: "#f5f3ff",
+    description: "Deep, natural Indian male instructional voice (Madhur - Adhyayan) for academic explanation."
   }
 ];
 
@@ -227,6 +202,145 @@ export function stopSpeech() {
 }
 
 /**
+ * Synthesizes text using Hugging Face Edge-TTS Space (innoai/Edge-TTS-Text-to-Speech) or backend proxy.
+ */
+export async function speakWithEdgeTts(text, options = {}) {
+  const {
+    speaker = "hi-IN-SwaraNeural - hi-IN (Female)",
+    rate = 0,
+    pitch = 0,
+    onStart,
+    onEnd,
+    onError,
+  } = options;
+
+  stopSpeech();
+  const cleanedText = cleanTextForSpeech(text);
+  if (!cleanedText) {
+    onEnd?.();
+    return false;
+  }
+
+  try {
+    currentAbortController = new AbortController();
+
+    const backendBase = import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, "")
+      : "http://127.0.0.1:8000/api";
+
+    const backendProxyUrl = `${backendBase}/edge-tts`;
+
+    let audioUrl = null;
+
+    // Try direct Hugging Face Space endpoint first
+    try {
+      const postRes = await fetch(`${HF_EDGE_TTS_URL}/gradio_api/call/tts_interface`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: [cleanedText, speaker, rate, pitch]
+        }),
+        signal: currentAbortController.signal,
+      });
+
+      if (postRes.ok) {
+        const { event_id } = await postRes.json();
+        if (event_id) {
+          const streamRes = await fetch(`${HF_EDGE_TTS_URL}/gradio_api/call/tts_interface/${event_id}`, {
+            signal: currentAbortController.signal,
+          });
+
+          if (streamRes.ok) {
+            const streamText = await streamRes.text();
+            const lines = streamText.split("\n");
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].startsWith("event: complete")) {
+                const dataLine = lines[i + 1];
+                if (dataLine && dataLine.startsWith("data: ")) {
+                  const rawJson = dataLine.slice(6);
+                  const parsed = JSON.parse(rawJson);
+                  const audioObj = parsed[0];
+                  if (audioObj && audioObj.url) {
+                    audioUrl = audioObj.url;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (hfErr) {
+      if (hfErr.name === "AbortError") return false;
+      console.warn("Direct HuggingFace Edge-TTS request failed, trying backend proxy...", hfErr);
+    }
+
+    // Fallback to backend proxy endpoint if HF Space direct request failed
+    if (!audioUrl) {
+      try {
+        const proxyRes = await fetch(backendProxyUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: cleanedText,
+            speaker: speaker,
+            rate: rate,
+            pitch: pitch,
+          }),
+          signal: currentAbortController.signal,
+        });
+
+        if (proxyRes.ok) {
+          const proxyData = await proxyRes.json();
+          if (proxyData.audio_url) {
+            audioUrl = proxyData.audio_url;
+          }
+        }
+      } catch (proxyErr) {
+        if (proxyErr.name === "AbortError") return false;
+        console.warn("Backend proxy Edge-TTS request failed:", proxyErr);
+      }
+    }
+
+    if (!audioUrl) {
+      return false;
+    }
+
+    const audio = new Audio(audioUrl);
+    currentAudio = audio;
+
+    return new Promise((resolve) => {
+      audio.onplay = () => {
+        onStart?.();
+      };
+
+      audio.onended = () => {
+        currentAudio = null;
+        onEnd?.();
+        resolve(true);
+      };
+
+      audio.onerror = (err) => {
+        console.warn("Edge-TTS Audio playback error:", err);
+        currentAudio = null;
+        onError?.(err);
+        resolve(false);
+      };
+
+      audio.play().catch((playErr) => {
+        console.warn("Edge-TTS Audio play call exception:", playErr);
+        currentAudio = null;
+        resolve(false);
+      });
+    });
+  } catch (err) {
+    if (err.name === "AbortError") return false;
+    console.warn("Edge-TTS general exception:", err);
+    return false;
+  }
+}
+
+/**
  * Synthesizes text using Coqui TTS server or proxy.
  */
 export async function speakWithCoqui(text, options = {}) {
@@ -297,10 +411,7 @@ export async function speakWithCoqui(text, options = {}) {
       currentAudio = audio;
 
       return new Promise((resolve) => {
-        let hasStarted = false;
-
         audio.onplay = () => {
-          hasStarted = true;
           onStart?.();
         };
 
@@ -342,6 +453,16 @@ export async function previewVoice(voice, customText = "", options = {}) {
   const { onStart, onEnd, onError } = options;
   const textToPlay = customText || voice.sampleText;
 
+  if (voice.engine === "edge_tts") {
+    const success = await speakWithEdgeTts(textToPlay, {
+      speaker: voice.speaker,
+      onStart,
+      onEnd,
+      onError,
+    });
+    if (success) return true;
+  }
+
   if (voice.engine === "coqui") {
     const success = await speakWithCoqui(textToPlay, {
       speaker: voice.speaker,
@@ -364,12 +485,12 @@ export async function previewVoice(voice, customText = "", options = {}) {
 }
 
 /**
- * Main speech function supporting Coqui TTS and Browser WebSpeech.
+ * Main speech function supporting Edge TTS, Coqui TTS, and Browser WebSpeech.
  */
 export async function speakText(text, options = {}) {
   const {
-    engine = "browser", // "browser" | "coqui" | "auto"
-    speaker = "Hindi Female",
+    engine = "edge_tts", // "edge_tts" | "browser" | "coqui" | "auto"
+    speaker = "hi-IN-SwaraNeural - hi-IN (Female)",
     language = "hi",
     onStart,
     onEnd,
@@ -386,14 +507,25 @@ export async function speakText(text, options = {}) {
 
   const isHindi = isHindiText(cleanedText) || language.startsWith("hi");
 
-  // If engine is set to browser (Google Swara / Male), bypass network calls entirely
+  // Try Edge TTS if requested
+  if (engine === "edge_tts" || engine === "auto") {
+    const edgeSuccess = await speakWithEdgeTts(cleanedText, {
+      speaker,
+      onStart,
+      onEnd,
+      onError,
+    });
+    if (edgeSuccess) return;
+  }
+
+  // Bypasses network calls for browser engine
   if (engine === "browser") {
     speakWithBrowser(cleanedText, { speaker, language: isHindi ? "hi" : language, onStart, onEnd, onError });
     return;
   }
 
-  // Otherwise, try Coqui TTS
-  if (engine === "coqui" || engine === "auto") {
+  // Try Coqui TTS
+  if (engine === "coqui") {
     const coquiSuccess = await speakWithCoqui(cleanedText, {
       speaker,
       language: isHindi ? "hi" : "en",
@@ -418,13 +550,11 @@ function loadVoices() {
       resolve(voices);
       return;
     }
-    // Voices not ready yet — wait for them
     const handler = () => {
       window.speechSynthesis.removeEventListener("voiceschanged", handler);
       resolve(window.speechSynthesis.getVoices());
     };
     window.speechSynthesis.addEventListener("voiceschanged", handler);
-    // Safety timeout if voiceschanged never fires
     setTimeout(() => {
       window.speechSynthesis.removeEventListener("voiceschanged", handler);
       resolve(window.speechSynthesis.getVoices() || []);
@@ -446,7 +576,6 @@ async function speakWithBrowser(text, { speaker = "Hindi Female", language = "hi
   const isHindiContent = isHindiText(text) || language.startsWith("hi");
   const isMale = (speaker || "").toLowerCase().includes("male") || (speaker || "").toLowerCase().includes("teacher");
 
-  // Wait for voices to load
   const voices = await loadVoices();
 
   const utterance = new SpeechSynthesisUtterance(text);
@@ -488,7 +617,7 @@ async function speakWithBrowser(text, { speaker = "Hindi Female", language = "hi
       utterance.lang = chosen.lang || utterance.lang;
     }
   } catch {
-    // Ignore voice selection errors, still speak with defaults
+    // Ignore voice selection errors
   }
 
   window.speechSynthesis.speak(utterance);
