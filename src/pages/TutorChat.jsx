@@ -373,8 +373,19 @@ export default function TutorChatPage() {
     let active = true;
     async function loadSubjects() {
       try {
-        const response = await get("/subjects");
-        const list = response?.subjects || response?.data || (Array.isArray(response) ? response : []);
+        const storedUser = JSON.parse(localStorage.getItem("studyyodha_user") || "null");
+        const studentClassId = storedUser?.student_profile?.class_id || storedUser?.student_profile?.class?.id || storedUser?.class_id;
+
+        const endpoint = (studentClassId && isFinite(studentClassId)) ? `/subjects?class_id=${encodeURIComponent(studentClassId)}` : "/subjects";
+        let response = await get(endpoint);
+        let list = response?.subjects || response?.data || (Array.isArray(response) ? response : []);
+
+        // Fallback: If filtered returned nothing, load all available subjects
+        if (Array.isArray(list) && list.length === 0 && studentClassId) {
+          response = await get("/subjects");
+          list = response?.subjects || response?.data || (Array.isArray(response) ? response : []);
+        }
+
         if (active && Array.isArray(list) && list.length > 0) {
           setSubjects(list);
           if (!subjectId && !selectedSubject) {

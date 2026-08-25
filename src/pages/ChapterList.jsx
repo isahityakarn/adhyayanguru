@@ -51,17 +51,28 @@ export default function ChapterListPage() {
   }, [classId, boardId]);
 
   async function loadSubjects() {
-    if (!classId || !boardId) {
-      setError("Class and board details are missing from your profile.");
-      setLoading(false);
-      return;
-    }
-
+    setLoading(true);
     try {
-      const response = await get(`/subjects?class_id=${encodeURIComponent(classId)}&board_id=${encodeURIComponent(boardId)}`);
-      setSubjects(getItems(response));
+      let endpoint = "/subjects";
+      if (classId && boardId && isFinite(classId) && isFinite(boardId)) {
+        endpoint = `/subjects?class_id=${encodeURIComponent(classId)}&board_id=${encodeURIComponent(boardId)}`;
+      } else if (classId && isFinite(classId)) {
+        endpoint = `/subjects?class_id=${encodeURIComponent(classId)}`;
+      }
+
+      let response = await get(endpoint);
+      let items = getItems(response);
+
+      // Fallback: If filtered returned nothing, load all available subjects
+      if (items.length === 0 && (classId || boardId)) {
+        response = await get("/subjects");
+        items = getItems(response);
+      }
+
+      setSubjects(items);
+      setError("");
     } catch (requestError) {
-      setError(requestError.message);
+      setError(requestError.message || "Failed to fetch subjects");
     } finally {
       setLoading(false);
     }
