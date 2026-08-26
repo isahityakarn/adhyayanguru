@@ -82,6 +82,24 @@ function getAuthToken(response) {
     ?? response?.user?.access_token;
 }
 
+const FALLBACK_CLASS_LEVELS = [
+  { id: 1, name: "Class 9" },
+  { id: 2, name: "Class 10" },
+  { id: 3, name: "Class 11" },
+  { id: 4, name: "Class 12" },
+];
+
+const FALLBACK_BOARDS = [
+  { id: 1, name: "CBSE Board" },
+  { id: 2, name: "ICSE Board" },
+  { id: 3, name: "State Board" },
+];
+
+const FALLBACK_PLANS = [
+  { id: 1, name: "Free Plan" },
+  { id: 2, name: "Pro Plan" },
+];
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [classLevels, setClassLevels] = useState([]);
@@ -108,31 +126,39 @@ export default function LoginPage() {
     language: "2",
   });
 
-  useEffect(() => {
-    let active = true;
+  const loadOptions = async () => {
+    setOptionsLoading(true);
+    setOptionsError("");
+    try {
+      const [classRes, boardRes, plansRes] = await Promise.allSettled([
+        get("/class-levels"),
+        get("/boards"),
+        get(import.meta.env.VITE_PLANS_ENDPOINT || "/plans"),
+      ]);
 
-    async function loadOptions() {
-      try {
-        const [classResponse, boardResponse, plansResponse] = await Promise.all([
-          get("/class-levels"),
-          get("/boards"),
-          get(import.meta.env.VITE_PLANS_ENDPOINT || "/plans"),
-        ]);
+      const fetchedClasses = classRes.status === "fulfilled" ? getItems(classRes.value) : [];
+      const fetchedBoards = boardRes.status === "fulfilled" ? getItems(boardRes.value) : [];
+      const fetchedPlans = plansRes.status === "fulfilled" ? getItems(plansRes.value) : [];
 
-        if (active) {
-          setClassLevels(getItems(classResponse));
-          setBoards(getItems(boardResponse));
-          setPlans(getItems(plansResponse));
-        }
-      } catch (error) {
-        if (active) setOptionsError(error.message);
-      } finally {
-        if (active) setOptionsLoading(false);
+      setClassLevels(fetchedClasses.length > 0 ? fetchedClasses : FALLBACK_CLASS_LEVELS);
+      setBoards(fetchedBoards.length > 0 ? fetchedBoards : FALLBACK_BOARDS);
+      setPlans(fetchedPlans.length > 0 ? fetchedPlans : FALLBACK_PLANS);
+
+      if (classRes.status === "rejected" && boardRes.status === "rejected" && plansRes.status === "rejected") {
+        setOptionsError("Server unreachable. Default options loaded.");
       }
+    } catch (error) {
+      setClassLevels(FALLBACK_CLASS_LEVELS);
+      setBoards(FALLBACK_BOARDS);
+      setPlans(FALLBACK_PLANS);
+      setOptionsError("Unable to load live options. Loaded default list.");
+    } finally {
+      setOptionsLoading(false);
     }
+  };
 
+  useEffect(() => {
     loadOptions();
-    return () => { active = false; };
   }, []);
 
   const updateForm = (field) => (event) => {

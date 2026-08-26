@@ -33,14 +33,22 @@ function getAuthToken() {
 
 async function request(path, options = {}) {
   const token = getAuthToken();
-  const response = await fetch(buildUrl(path), {
-    ...options,
-    headers: {
-      Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  const url = buildUrl(path);
+  let response;
+
+  try {
+    response = await fetch(url, {
+      mode: "cors",
+      ...options,
+      headers: {
+        Accept: "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch (networkErr) {
+    throw new Error(`Network/CORS connection failed to API: ${url}`);
+  }
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
