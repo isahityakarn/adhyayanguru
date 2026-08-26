@@ -255,6 +255,12 @@ export default function TutorChatPage() {
 
   const recognitionRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  // Auto-scroll to bottom on new message or thinking state
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isSending]);
 
   // Fetch student's completed chapters
   useEffect(() => {
@@ -596,10 +602,15 @@ export default function TutorChatPage() {
         has_extracted_text: !!chapterContent,
       };
       
+      const activeSubjectObj = subjects.find(s => String(s.id) === String(selectedSubject || subjectId));
+      const subjectName = activeSubjectObj ? activeSubjectObj.name : "";
+
       const response = await post(TUTOR_CHAT_ENDPOINT, {
         question,
         message: question,
-        subject_id: subjectId,
+        subject_id: selectedSubject || subjectId || null,
+        subject: subjectName,
+        subject_name: subjectName,
         chapter_id: selectedChapter || null,
         chapter_content: contentMessage,
         pdf_url: chapterContext.pdf_url,
@@ -607,7 +618,9 @@ export default function TutorChatPage() {
         chapter: chapterLabel,
         chapter_context: chapterContext,
         context: {
-          subject_id: subjectId,
+          subject_id: selectedSubject || subjectId || null,
+          subject: subjectName,
+          subject_name: subjectName,
           chapter_id: selectedChapter || null,
           chapter: chapterLabel,
           chapter_content: contentMessage,
@@ -1071,7 +1084,27 @@ export default function TutorChatPage() {
               )}
             </div>
           ))}
-          {isSending && <div className="tutor-message ai-message">{selectedVoiceId === "edge_tts_hindi_female" ? "Sanskriti" : "Adhyayan"} is thinking...</div>}
+          {isSending && (
+            <div className="tutor-message ai-message tutor-thinking-message">
+              <div className="tutor-message-label">
+                {selectedVoiceId === "edge_tts_hindi_female" ? "Sanskriti" : "Adhyayan"}
+              </div>
+              <div className="tutor-thinking-content">
+                <Sparkles size={16} className="tutor-thinking-sparkle" />
+                <span className="tutor-thinking-text">
+                  {getUserLanguage().startsWith("hi")
+                    ? `${selectedVoiceId === "edge_tts_hindi_female" ? "संस्कृति" : "अध्ययन"} उत्तर सोच रही हैं...`
+                    : `${selectedVoiceId === "edge_tts_hindi_female" ? "Sanskriti" : "Adhyayan"} is thinking...`}
+                </span>
+                <div className="tutor-typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
 
         <div className="tutor-composer">
