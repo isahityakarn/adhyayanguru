@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Phone, GraduationCap, Globe, Mail, Lock, School } from "lucide-react";
+import { User, Phone, GraduationCap, Globe, Mail, Lock, School, KeyRound, CheckCircle2, ArrowLeft, RefreshCw } from "lucide-react";
 import * as yup from "yup";
 import { Card, FormField, Input, PasswordInput, PrimaryButton, Select } from "../components/UI";
 import { c, headingFont } from "../utils/theme";
@@ -14,7 +14,6 @@ const loginSchema = yup.object({
     .oneOf([yup.ref("password")], "Passwords must match")
     .required("Please confirm your password"),
   schoolName: yup.string().trim().required("School name is required"),
-  plan: yup.string().required("Please select a plan"),
   classLevel: yup.string().required("Please select a class"),
   board: yup.string().required("Please select a board"),
   phone: yup.string()
@@ -113,6 +112,15 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [loginErrors, setLoginErrors] = useState({});
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  
+  // OTP Verification state
+  const [showOtpStep, setShowOtpStep] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [otpError, setOtpError] = useState("");
+  const [otpSuccess, setOtpSuccess] = useState("");
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -125,6 +133,14 @@ export default function LoginPage() {
     phone: "",
     language: "2",
   });
+
+  useEffect(() => {
+    let timer;
+    if (resendTimer > 0) {
+      timer = setInterval(() => setResendTimer((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendTimer]);
 
   const loadOptions = async () => {
     setOptionsLoading(true);
@@ -165,46 +181,23 @@ export default function LoginPage() {
     setForm((current) => ({ ...current, [field]: event.target.value }));
   };
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function handleSendOtp(event) {
+    if (event) event.preventDefault();
     setFormError("");
     setFieldErrors({});
-    setSubmitting(true);
+    setOtpError("");
+    setSendingOtp(true);
 
     try {
       await loginSchema.validate(form, { abortEarly: false });
-      const signupResponse = await post(import.meta.env.VITE_SIGNUP_ENDPOINT || "/signup", {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        password: form.password,
-        password_confirmation: form.passwordConfirmation,
-        school_name: form.schoolName,
-        language_pref: form.language === "1" ? "hi" : "en",
-        class_id: Number(form.classLevel),
-        board_id: Number(form.board),
-        plan_id: Number(form.plan),
-      });
-
-      const signupToken = getAuthToken(signupResponse);
-      if (signupToken) localStorage.setItem("studyyodha_token", signupToken);
-
-      localStorage.setItem("studyyodha_user", JSON.stringify({
-        ...signupResponse?.user,
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        schoolName: form.schoolName,
-        plan: form.plan,
-        class_id: Number(form.classLevel),
-        board_id: Number(form.board),
-        classLevel: form.classLevel,
-        board: form.board,
-        language: form.language === "1" ? "hi" : "en",
-        role: 3,
-      }));
-      localStorage.setItem("studyyodha_user_role", "student");
-      navigate("/dashboard");
+      const res = await post("/send-otp", { email: form.email, name: form.name });
+      if (res?.success) {
+        setShowOtpStep(true);
+        setOtpSuccess(res?.message || `Verification OTP sent to ${form.email}`);
+        setResendTimer(30);
+      } else {
+        setFormError(res?.message || "Failed to send verification email.");
+      }
     } catch (error) {
       if (error instanceof yup.ValidationError) {
         const errors = {};
@@ -216,10 +209,67 @@ export default function LoginPage() {
         setFieldErrors(errors);
         return;
       }
-      if (Object.keys(error.errors || {}).length > 0) {
+      if (Object.keys(error?.errors || {}).length > 0) {
         setFieldErrors(getApiFieldErrors(error.errors));
       }
-      setFormError(error.message);
+      setFormError(error.message || "Could not send verification OTP.");
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setFormError("");
+    setOtpError("");
+    setSubmitting(true);
+
+    if (!otp || otp.trim().length !== 6) {
+      setOtpError("Please enter the complete 6-digit verification code.");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const signupResponse = await post(import.meta.env.VITE_SIGNUP_ENDPOINT || "/signup", {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        password_confirmation: form.passwordConfirmation,
+        school_name: form.schoolName,
+        language_pref: form.language === "1" ? "hi" : "en",
+        class_id: Number(form.classLevel),
+        board_id: Number(form.board),
+        plan_id: 1,
+        otp: otp.trim(),
+      });
+
+      const signupToken = getAuthToken(signupResponse);
+      if (signupToken) localStorage.setItem("studyyodha_token", signupToken);
+
+      localStorage.setItem("studyyodha_user", JSON.stringify({
+        ...signupResponse?.user,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        schoolName: form.schoolName,
+        plan: "free",
+        class_id: Number(form.classLevel),
+        board_id: Number(form.board),
+        classLevel: form.classLevel,
+        board: form.board,
+        language: form.language === "1" ? "hi" : "en",
+        role: 3,
+      }));
+      localStorage.setItem("studyyodha_user_role", "student");
+      navigate("/dashboard");
+    } catch (error) {
+      if (error?.errors?.otp) {
+        setOtpError(Array.isArray(error.errors.otp) ? error.errors.otp[0] : error.errors.otp);
+      } else {
+        setOtpError(error.message || "Registration failed. Invalid or expired verification code.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -277,41 +327,96 @@ export default function LoginPage() {
       <div className="w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2" style={{ ...headingFont, color: c.dark }}>
-            {isLogin ? "Welcome Back" : "Create Your Account"}
+            {isLogin ? "Welcome Back" : showOtpStep ? "Verify Your Email" : "Create Your Account"}
           </h1>
           <p className="text-sm" style={{ color: c.gray }}>
             {isLogin
               ? "Sign in with your student or administrator credentials"
+              : showOtpStep
+              ? `We sent a 6-digit verification OTP to ${form.email}`
               : "Start your learning journey in under a minute"}
           </p>
         </div>
         
         <Card>
-          {isLogin && (
-            <div className="mb-4 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold text-amber-800">Demo Quick-Fill:</span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLoginForm({ email: "admin@studyyodha.in", password: "admin123" })}
-                  className="px-2 py-1 rounded bg-amber-600 text-white font-bold text-[11px] hover:bg-amber-700 transition-colors"
-                >
-                  Admin (admin@studyyodha.in)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLoginForm({ email: "sanskritikarn@gmail.com", password: "password123" })}
-                  className="px-2 py-1 rounded bg-teal-700 text-white font-bold text-[11px] hover:bg-teal-800 transition-colors"
-                >
-                  Student Demo
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Form Mode Toggle Tabs */}
+          <div className="flex border-b border-slate-200 mb-5">
+            <button
+              type="button"
+              onClick={() => { setIsLogin(true); setShowOtpStep(false); setFormError(""); setOtpError(""); }}
+              className={`flex-1 py-2.5 text-sm font-bold text-center border-b-2 transition-all cursor-pointer ${
+                isLogin ? "border-amber-600 text-amber-900 bg-amber-50/50" : "border-transparent text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              Log In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIsLogin(false); setShowOtpStep(false); setFormError(""); setOtpError(""); }}
+              className={`flex-1 py-2.5 text-sm font-bold text-center border-b-2 transition-all cursor-pointer ${
+                !isLogin ? "border-amber-600 text-amber-900 bg-amber-50/50" : "border-transparent text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+
+
 
           <form onSubmit={isLogin ? handleLogin : handleSubmit}>
           {isLogin ? (
             <LoginFields form={loginForm} errors={loginErrors} updateForm={updateLoginForm} />
+          ) : showOtpStep ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                <div className="flex items-center gap-2 text-blue-900">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                  <div>
+                    <p className="font-semibold">{otpSuccess || `OTP sent to ${form.email}`}</p>
+                    <p className="text-[11px] text-blue-700">Sent from support@adhyayanguru.shop</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setShowOtpStep(false); setOtpError(""); }}
+                  className="text-blue-700 font-semibold underline text-[11px] hover:text-blue-900 flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" /> Edit Info
+                </button>
+              </div>
+
+              <FormField label="Enter 6-Digit Verification Code">
+                <Input
+                  placeholder="• • • • • •"
+                  icon={KeyRound}
+                  type="text"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="text-center font-mono text-xl tracking-[0.4em] font-bold"
+                  autoFocus
+                  required
+                />
+                {otpError && <p className="text-xs mt-1 font-medium" style={{ color: c.error }}>{otpError}</p>}
+              </FormField>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-slate-500">Didn't receive the code?</span>
+                <button
+                  type="button"
+                  disabled={resendTimer > 0 || sendingOtp}
+                  onClick={handleSendOtp}
+                  className={`font-semibold flex items-center gap-1 ${resendTimer > 0 ? "text-slate-400 cursor-not-allowed" : "text-amber-700 hover:underline"}`}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${sendingOtp ? "animate-spin" : ""}`} />
+                  {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : sendingOtp ? "Sending..." : "Resend OTP"}
+                </button>
+              </div>
+
+              <PrimaryButton className="w-full mt-3" type="submit" disabled={submitting}>
+                {submitting ? "Verifying & Creating Account..." : "Verify & Complete Signup →"}
+              </PrimaryButton>
+            </div>
           ) : (
             <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -339,18 +444,6 @@ export default function LoginPage() {
             <Input placeholder="Enter your school name" icon={School} value={form.schoolName} onChange={updateForm("schoolName")} required />
             {fieldErrors.schoolName && <p className="text-xs mt-1" style={{ color: c.error }}>{fieldErrors.schoolName}</p>}
           </FormField>
-
-          <FormField label="Select Plan">
-            <Select value={form.plan} onChange={updateForm("plan")} disabled={optionsLoading} required>
-              <option value="">{optionsLoading ? "Loading plans..." : "Choose a plan"}</option>
-              {plans.map((item) => (
-                <option key={getOptionValue(item)} value={getOptionValue(item)}>
-                  {getOptionLabel(item)}
-                </option>
-              ))}
-            </Select>
-            {fieldErrors.plan && <p className="text-xs mt-1" style={{ color: c.error }}>{fieldErrors.plan}</p>}
-          </FormField>
           
           <FormField label="Class">
             <Select icon={GraduationCap} disabled={optionsLoading} value={form.classLevel} onChange={updateForm("classLevel")} required>
@@ -377,7 +470,7 @@ export default function LoginPage() {
 
           {optionsError && (
             <p className="text-xs mb-4" style={{ color: c.error }}>
-              Unable to load classes, boards, or plans. Please try again.
+              Unable to load classes or boards. Please try again.
             </p>
           )}
           
@@ -395,11 +488,11 @@ export default function LoginPage() {
           </div>
 
           {formError && (
-            <p className="text-xs mb-4" style={{ color: c.error }}>{formError}</p>
+            <p className="text-xs mb-4 mt-2" style={{ color: c.error }}>{formError}</p>
           )}
           
-          <PrimaryButton className="w-full mt-2" type="submit" disabled={submitting}>
-            {submitting ? "Creating account..." : "Create Account →"}
+          <PrimaryButton className="w-full mt-3" type="button" onClick={handleSendOtp} disabled={sendingOtp}>
+            {sendingOtp ? "Sending Verification OTP..." : "Send Verification OTP →"}
           </PrimaryButton>
             </>
           )}
@@ -416,13 +509,19 @@ export default function LoginPage() {
           <div className="text-center mt-4">
             <p className="text-sm" style={{ color: c.gray }}>
               {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-              <span
-                className="font-semibold cursor-pointer"
+              <button
+                type="button"
+                className="font-bold underline ml-1 cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
                 style={{ color: c.primary }}
-                onClick={() => { setIsLogin((current) => !current); setFormError(""); }}
+                onClick={() => { 
+                  setIsLogin((current) => !current); 
+                  setShowOtpStep(false); 
+                  setFormError(""); 
+                  setOtpError(""); 
+                }}
               >
                 {isLogin ? "Sign up" : "Log in"}
-              </span>
+              </button>
             </p>
           </div>
         </Card>
