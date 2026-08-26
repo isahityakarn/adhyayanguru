@@ -1,4 +1,17 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+function getApiBaseUrl() {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  const currentHost = typeof window !== "undefined" ? window.location.hostname : "localhost";
+
+  if (envUrl) {
+    if (currentHost !== "localhost" && currentHost !== "127.0.0.1") {
+      return envUrl.replace(/localhost|127\.0\.0\.1/g, currentHost);
+    }
+    return envUrl;
+  }
+  return `http://${currentHost}:8000/api`;
+}
+
+export const API_BASE_URL = getApiBaseUrl();
 
 function buildUrl(path) {
   if (/^https?:\/\//.test(path)) return path;

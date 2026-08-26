@@ -4,6 +4,8 @@
  * Coqui TTS (XTTS-v2 Neural Voice), and Browser Hindi Natural Web Speech API.
  */
 
+import { API_BASE_URL } from "./api";
+
 export const DEFAULT_COQUI_URL = import.meta.env.VITE_COQUI_TTS_SERVER || "http://localhost:5002";
 export const HF_EDGE_TTS_URL = "https://innoai-edge-tts-text-to-speech.hf.space";
 
@@ -224,10 +226,7 @@ export async function speakWithEdgeTts(text, options = {}) {
   try {
     currentAbortController = new AbortController();
 
-    const backendBase = import.meta.env.VITE_API_BASE_URL
-      ? import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, "")
-      : "http://127.0.0.1:8000/api";
-
+    const backendBase = API_BASE_URL.replace(/\/+$/, "");
     const backendProxyUrl = `${backendBase}/edge-tts`;
 
     let audioUrl = null;

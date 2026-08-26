@@ -610,6 +610,7 @@ export default function TutorChatPage() {
           source_file_url: chapterContext.source_file_url,
           has_pdf: chapterContext.has_pdf,
           has_extracted_text: chapterContext.has_extracted_text,
+          voice_id: selectedVoiceId,
         },
         language: getUserLanguage(),
         messages: nextMessages.map(({ from, text }) => ({ role: from === "ai" ? "assistant" : "user", content: text })),
