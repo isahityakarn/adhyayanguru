@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { Home, BookOpen, Trophy, Users, Settings, LogIn, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Crown } from "lucide-react";
+import { Home, BookOpen, Trophy, Users, Settings, LogIn, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Crown, Menu, X } from "lucide-react";
 import { c, headingFont } from "../utils/theme";
 
 const PAGES = [
@@ -16,6 +16,7 @@ const PAGES = [
 
 export default function Layout({ children }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userRole = localStorage.getItem("studyyodha_user_role");
@@ -27,18 +28,61 @@ export default function Layout({ children }) {
     return !page.studentOnly || isStudent;
   });
 
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   function handleLogout() {
     localStorage.removeItem("studyyodha_user");
     localStorage.removeItem("studyyodha_user_role");
     localStorage.removeItem("studyyodha_token");
+    setIsMobileMenuOpen(false);
     navigate("/");
   }
 
   return (
     <div className="app-shell" style={{ background: c.bg }}>
+      {/* Mobile Sticky Topbar */}
+      <header className="mobile-topbar">
+        <h1 style={{ ...headingFont, margin: 0, fontSize: "20px", color: "#f6f2e8" }}>
+          AdhyayanGuru
+        </h1>
+        <button
+          type="button"
+          className="mobile-menu-btn"
+          onClick={() => setIsMobileMenuOpen((open) => !open)}
+          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#ffffff",
+            padding: "6px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </header>
+
+      {/* Backdrop for mobile drawer */}
+      {isMobileMenuOpen && (
+        <div
+          className="mobile-backdrop"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <div className={`app-frame ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
         {/* Sidebar navigation */}
-        <div className="sidebar" style={{ background: c.dark, borderRight: `1px solid ${c.dark}` }}>
+        <div
+          className={`sidebar ${isMobileMenuOpen ? "mobile-open" : ""}`}
+          style={{ background: c.dark, borderRight: `1px solid ${c.dark}` }}
+        >
           {/* Logo */}
           <div className="sidebar-brand">
             <h1 style={{ ...headingFont }}>
@@ -67,6 +111,7 @@ export default function Layout({ children }) {
                   to={page.path}
                   className={`sidebar-link ${isActive ? "active" : ""}`}
                   style={{ textDecoration: "none" }}
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {Icon && <Icon size={18} aria-hidden="true" />}
                   <span>{page.label}</span>

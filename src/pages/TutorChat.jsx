@@ -234,7 +234,12 @@ export default function TutorChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [chatError, setChatError] = useState("");
   const [viewerMethod, setViewerMethod] = useState("direct"); // direct, google, mozilla
-  const [isPadHidden, setIsPadHidden] = useState(false);
+  const [isPadHidden, setIsPadHidden] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth <= 768;
+    }
+    return false;
+  });
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ttsEngine, setTtsEngine] = useState("edge_tts");
   const [selectedVoiceId, setSelectedVoiceId] = useState("edge_tts_hindi_female");
