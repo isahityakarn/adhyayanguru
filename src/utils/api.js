@@ -2,13 +2,22 @@ function getApiBaseUrl() {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
   const currentHost = typeof window !== "undefined" ? window.location.hostname : "localhost";
 
-  if (envUrl) {
-    if (currentHost !== "localhost" && currentHost !== "127.0.0.1") {
-      return envUrl.replace(/localhost|127\.0\.0\.1/g, currentHost);
-    }
+  // Live production site host
+  if (currentHost.includes("adhyayanguru.shop")) {
+    return "https://adhyayanguruapi.adhyayanguru.shop/api";
+  }
+
+  // Explicit remote backend set in env
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
     return envUrl;
   }
-  return `http://${currentHost}:8000/api`;
+
+  // Local Wi-Fi network testing on mobile phone
+  if (currentHost !== "localhost" && currentHost !== "127.0.0.1") {
+    return `http://${currentHost}:8000/api`;
+  }
+
+  return envUrl || "http://localhost:8000/api";
 }
 
 export const API_BASE_URL = getApiBaseUrl();
