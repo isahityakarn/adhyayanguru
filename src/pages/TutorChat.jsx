@@ -5,7 +5,16 @@ import remarkGfm from "remark-gfm";
 import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Square, BookOpen, Maximize2, PanelLeftClose, Settings, RefreshCw, X, CheckCircle2, AlertTriangle, ExternalLink, Sparkles, Sliders } from "lucide-react";
 import { Input, PrimaryButton } from "../components/UI";
 import { speakText, stopSpeech, previewVoice, speakWithEdgeTts, HF_EDGE_TTS_URL, AVAILABLE_VOICES } from "../utils/coquiTts";
-import { get, post } from "../utils/api";
+import { get, post, API_BASE_URL } from "../utils/api";
+
+const BACKEND_BASE_URL = (API_BASE_URL || "").replace(/\/api\/?$/, "");
+
+function getPdfUrl(chapter) {
+  const rawUrl = chapter?.source_file_url || chapter?.pdf_url || chapter?.file_url;
+  if (!rawUrl) return null;
+  if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+  return `${BACKEND_BASE_URL}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+}
 
 
 
@@ -455,11 +464,21 @@ export default function TutorChatPage() {
   };
 
   const speak = (text) => {
-    const activeVoice = AVAILABLE_VOICES.find(v => v.id === selectedVoiceId) || AVAILABLE_VOICES[0];
+    const hasDevanagari = /[\u0900-\u097F]/.test(text || "");
+    let activeVoice = AVAILABLE_VOICES.find(v => v.id === selectedVoiceId) || AVAILABLE_VOICES[0];
+
+    if (!hasDevanagari) {
+      const englishVoice = AVAILABLE_VOICES.find(v => (v.lang === "en" || (v.id && v.id.includes("english"))));
+      if (englishVoice) activeVoice = englishVoice;
+    } else {
+      const hindiVoice = AVAILABLE_VOICES.find(v => (v.lang === "hi" || (v.id && v.id.includes("hindi"))));
+      if (hindiVoice) activeVoice = hindiVoice;
+    }
+
     speakText(text, {
       engine: activeVoice.engine,
       speaker: activeVoice.speaker,
-      language: getUserLanguage(),
+      language: hasDevanagari ? "hi" : "en",
       onStart: () => setIsSpeaking(true),
       onEnd: () => setIsSpeaking(false),
       onError: () => setIsSpeaking(false),
@@ -771,12 +790,12 @@ export default function TutorChatPage() {
             {!chapterLoading && (chapterError || chaptersError) && (
               <p className="tutor-reader-status tutor-reader-error">{chapterError || chaptersError}</p>
             )}
-            {!chapterLoading && !chapterError && !chaptersError && chapter?.source_file_url && (
+            {!chapterLoading && !chapterError && !chaptersError && getPdfUrl(chapter) && (
               <>
                 {viewerMethod === "direct" && (
                   <iframe
                     className="tutor-pdf"
-                    src={`${chapter.source_file_url}#toolbar=0&navpanes=0&scrollbar=1`}
+                    src={`${getPdfUrl(chapter)}#toolbar=0&navpanes=0&scrollbar=1`}
                     title={`${getChapterLabel(chapter, "Chapter")} PDF`}
                     allow="fullscreen"
                     loading="lazy"
@@ -785,7 +804,7 @@ export default function TutorChatPage() {
                 {viewerMethod === "google" && (
                   <iframe
                     className="tutor-pdf"
-                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(chapter.source_file_url)}&embedded=true`}
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(getPdfUrl(chapter))}&embedded=true`}
                     title={`${getChapterLabel(chapter, "Chapter")} PDF`}
                     allow="fullscreen"
                     loading="lazy"
@@ -794,7 +813,7 @@ export default function TutorChatPage() {
                 {viewerMethod === "mozilla" && (
                   <iframe
                     className="tutor-pdf"
-                    src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(chapter.source_file_url)}`}
+                    src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(getPdfUrl(chapter))}`}
                     title={`${getChapterLabel(chapter, "Chapter")} PDF`}
                     allow="fullscreen"
                     loading="lazy"
@@ -852,7 +871,7 @@ export default function TutorChatPage() {
                   PDF.js Viewer
                 </button>
                 <a 
-                  href={chapter.source_file_url} 
+                  href={getPdfUrl(chapter)} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ 
@@ -870,7 +889,7 @@ export default function TutorChatPage() {
               </div>
             </>
           )}
-          {!chapterLoading && !chapterError && !chaptersError && chapter && !chapter.source_file_url && (
+          {!chapterLoading && !chapterError && !chaptersError && chapter && !getPdfUrl(chapter) && (
             <p className="tutor-reader-status">This chapter does not have a PDF available yet.</p>
           )}
           {!chapterLoading && !chapterError && !chaptersError && !chapter && (
