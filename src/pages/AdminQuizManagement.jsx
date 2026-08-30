@@ -699,96 +699,100 @@ export default function AdminQuizManagementPage() {
                   <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2" style={{ ...headingFont }}>
                     <Layers size={18} className="text-emerald-600" /> Chapter Quiz Explorer
                   </h3>
-                <p className="text-xs text-gray-500 font-medium">
-                  First select <strong>Class</strong>, then pick <strong>Subject</strong>, to view chapter-wise uploaded questions.
-                </p>
+                  <p className="text-xs text-gray-500 font-medium">
+                    First select <strong>Class</strong>, then pick <strong>Subject</strong>, to view chapter-wise uploaded questions.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-3.5 py-1 rounded-full">
+                  Uploaded: {filteredChapters.filter((ch) => ch.has_quiz || ch.quiz).length} / {filteredChapters.length} Chapters
+                </span>
               </div>
-              <span className="text-xs font-bold text-amber-800 bg-amber-100 border border-amber-300 px-3 py-1 rounded-full">
-                {filteredChapters.length} Chapters Found
-              </span>
-            </div>
 
-            {/* STEP 1: CLASS SELECTION */}
-            <div>
-              <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider block mb-2">
-                1. Select Class
-              </span>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setExplorerClass("ALL");
-                    setExplorerSubject("ALL");
-                  }}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border shadow-2xs ${
-                    explorerClass === "ALL"
-                      ? "bg-amber-500 text-white border-amber-600 shadow-sm"
-                      : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-amber-50 hover:text-amber-800"
-                  }`}
-                >
-                  All Classes ({allChapters.length})
-                </button>
-                {uniqueClasses.map((cls) => {
-                  const clsCount = allChapters.filter((ch) => ch.class_name === cls).length;
-                  return (
-                    <button
-                      key={cls}
-                      type="button"
-                      onClick={() => {
-                        setExplorerClass(cls);
-                        setExplorerSubject("ALL");
-                      }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border shadow-2xs ${
-                        explorerClass === cls
-                          ? "bg-amber-500 text-white border-amber-600 shadow-sm"
-                          : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-amber-50 hover:text-amber-800"
-                      }`}
-                    >
-                      {cls} ({clsCount})
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* STEP 2: SUBJECT SELECTION */}
-            {uniqueSubjects.length > 0 && (
-              <div className="pt-2 border-t border-gray-100">
+              {/* STEP 1: CLASS SELECTION */}
+              <div>
                 <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider block mb-2">
-                  2. Select Subject {explorerClass !== "ALL" && `(for ${explorerClass})`}
+                  1. Select Class
                 </span>
                 <div className="flex gap-2 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => setExplorerSubject("ALL")}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-2xs ${
-                      explorerSubject === "ALL"
-                        ? "bg-indigo-600 text-white border-indigo-700 shadow-sm"
-                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-indigo-50 hover:text-indigo-800"
+                    onClick={() => {
+                      setExplorerClass("ALL");
+                      setExplorerSubject("ALL");
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border shadow-2xs ${
+                      explorerClass === "ALL"
+                        ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-amber-50 hover:text-amber-800"
                     }`}
                   >
-                    All Subjects
+                    All Classes ({allChapters.filter((ch) => ch.has_quiz || ch.quiz).length}/{allChapters.length})
                   </button>
-                  {uniqueSubjects.map((sub) => {
-                    const subCount = chaptersInSelectedClass.filter((ch) => ch.subject_name === sub).length;
+                  {uniqueClasses.map((cls) => {
+                    const clsChapters = allChapters.filter((ch) => ch.class_name === cls);
+                    const totalCount = clsChapters.length;
+                    const uploadedCount = clsChapters.filter((ch) => ch.has_quiz || ch.quiz).length;
                     return (
                       <button
-                        key={sub}
+                        key={cls}
                         type="button"
-                        onClick={() => setExplorerSubject(sub)}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-2xs ${
-                          explorerSubject === sub
-                            ? "bg-indigo-600 text-white border-indigo-700 shadow-sm"
-                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-indigo-50 hover:text-indigo-800"
+                        onClick={() => {
+                          setExplorerClass(cls);
+                          setExplorerSubject("ALL");
+                        }}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border shadow-2xs ${
+                          explorerClass === cls
+                            ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-amber-50 hover:text-amber-800"
                         }`}
                       >
-                        {sub} ({subCount})
+                        {cls} ({uploadedCount}/{totalCount} Uploaded)
                       </button>
                     );
                   })}
                 </div>
               </div>
-            )}
+
+              {/* STEP 2: SUBJECT SELECTION */}
+              {uniqueSubjects.length > 0 && (
+                <div className="pt-2 border-t border-gray-100">
+                  <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider block mb-2">
+                    2. Select Subject {explorerClass !== "ALL" && `(for ${explorerClass})`}
+                  </span>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setExplorerSubject("ALL")}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-2xs ${
+                        explorerSubject === "ALL"
+                          ? "bg-indigo-600 text-white border-indigo-700 shadow-sm"
+                          : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-indigo-50 hover:text-indigo-800"
+                      }`}
+                    >
+                      All Subjects
+                    </button>
+                    {uniqueSubjects.map((sub) => {
+                      const subChapters = chaptersInSelectedClass.filter((ch) => ch.subject_name === sub);
+                      const totalSub = subChapters.length;
+                      const uploadedSub = subChapters.filter((ch) => ch.has_quiz || ch.quiz).length;
+                      return (
+                        <button
+                          key={sub}
+                          type="button"
+                          onClick={() => setExplorerSubject(sub)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-2xs ${
+                            explorerSubject === sub
+                              ? "bg-indigo-600 text-white border-indigo-700 shadow-sm"
+                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-indigo-50 hover:text-indigo-800"
+                          }`}
+                        >
+                          {sub} ({uploadedSub}/{totalSub} Uploaded)
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
             {/* STEP 3: CHAPTER WISE UPLOADED QUESTIONS LIST */}
             <div className="pt-2 border-t border-gray-100">
