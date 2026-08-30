@@ -350,21 +350,31 @@ export default function TutorChatPage() {
 
   const markChapterCompleted = async () => {
     if (!selectedChapter) return;
+    const isCurrentlyDone = isSelectedChapterCompleted || chapterProgress?.status === 'completed';
+    const newStatus = isCurrentlyDone ? 'in_progress' : 'completed';
+    const newPct = isCurrentlyDone ? 0 : 100;
+
     try {
       const res = await post('/progress/update', {
         chapter_id: selectedChapter,
-        status: 'completed',
-        percent_complete: 100,
+        status: newStatus,
+        percent_complete: newPct,
       });
       if (res?.progress) {
         setChapterProgress(res.progress);
         const updatedSet = new Set(completedChapterIds);
         const doneId = String(selectedChapter);
-        updatedSet.add(doneId);
+
+        if (isCurrentlyDone) {
+          updatedSet.delete(doneId);
+        } else {
+          updatedSet.add(doneId);
+        }
+
         setCompletedChapterIds(updatedSet);
 
-        // If hideCompleted is true, auto select next uncompleted chapter
-        if (hideCompleted) {
+        // If hideCompleted is true and chapter was marked complete, auto select next uncompleted chapter
+        if (hideCompleted && !isCurrentlyDone) {
           const remaining = chapters.filter((c, idx) => {
             const cid = String(getChapterId(c, idx + 1));
             return !updatedSet.has(cid);
@@ -377,7 +387,7 @@ export default function TutorChatPage() {
         }
       }
     } catch (err) {
-      console.error("Failed to mark chapter complete", err);
+      console.error("Failed to toggle chapter completion", err);
     }
   };
 
@@ -753,7 +763,7 @@ export default function TutorChatPage() {
                     type="button"
                     onClick={markChapterCompleted}
                     style={{
-                      background: chapterProgress.status === 'completed' ? '#059669' : '#e07a3f',
+                      background: chapterProgress.status === 'completed' ? '#dc2626' : '#e07a3f',
                       color: '#ffffff',
                       border: 'none',
                       padding: '3px 10px',
@@ -762,9 +772,9 @@ export default function TutorChatPage() {
                       fontWeight: '700',
                       cursor: 'pointer'
                     }}
-                    title="Click to mark this chapter as completed"
+                    title={chapterProgress.status === 'completed' ? "Click to mark as incomplete" : "Click to mark as completed"}
                   >
-                    {chapterProgress.status === 'completed' ? '✓ Completed' : 'Mark Complete'}
+                    {chapterProgress.status === 'completed' ? '✕ Remove Complete' : '✓ Mark Complete'}
                   </button>
                 </div>
               )}
@@ -953,7 +963,7 @@ export default function TutorChatPage() {
                   fontSize: '11px',
                   borderRadius: '6px',
                   border: 'none',
-                  background: isSelectedChapterCompleted ? '#059669' : '#e07a3f',
+                  background: isSelectedChapterCompleted ? '#dc2626' : '#e07a3f',
                   color: '#ffffff',
                   cursor: 'pointer',
                   fontWeight: '700',
@@ -961,9 +971,9 @@ export default function TutorChatPage() {
                   marginLeft: '6px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
                 }}
-                title="Click to mark this selected chapter as completed"
+                title={isSelectedChapterCompleted ? "Click to mark this chapter as incomplete" : "Click to mark as completed"}
               >
-                {isSelectedChapterCompleted ? '✓ Completed' : 'Mark Complete'}
+                {isSelectedChapterCompleted ? '✕ Remove Complete' : '✓ Mark Complete'}
               </button>
             )}
             <button
