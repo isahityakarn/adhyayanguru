@@ -20,9 +20,9 @@ import {
   ArrowLeft,
   List
 } from "lucide-react";
-import { Card, PrimaryButton } from "../components/UI";
-import { get, post, put, del } from "../utils/api";
-import { c, headingFont } from "../utils/theme";
+import { Card, PrimaryButton } from "../../components/UI";
+import { get, post, put, del } from "../../utils/api";
+import { c, headingFont } from "../../utils/theme";
 
 export default function AdminQuizManagementPage() {
   const [dashboardData, setDashboardData] = useState(null);

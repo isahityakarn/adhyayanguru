@@ -25,9 +25,9 @@ import {
   Award,
   Loader2
 } from "lucide-react";
-import { Card, Bar, PrimaryButton } from "../components/UI";
-import { get, post } from "../utils/api";
-import { c, headingFont } from "../utils/theme";
+import { Card, Bar, PrimaryButton } from "../../components/UI";
+import { get, post } from "../../utils/api";
+import { c, headingFont } from "../../utils/theme";
 
 export default function QuizPage() {
   const [searchParams, setSearchParams] = useSearchParams();

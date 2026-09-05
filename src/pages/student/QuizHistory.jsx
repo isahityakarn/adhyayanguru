@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { History, Trophy, BookOpen, CheckCircle, XCircle, ArrowRight, Eye, Sparkles, Loader2 } from "lucide-react";
-import { Card, PrimaryButton } from "../components/UI";
-import { get } from "../utils/api";
-import { c, headingFont } from "../utils/theme";
+import { Card, PrimaryButton } from "../../components/UI";
+import { get } from "../../utils/api";
+import { c, headingFont } from "../../utils/theme";
 
 export default function QuizHistoryPage() {
   const [attempts, setAttempts] = useState([]);

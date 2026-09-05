@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, Link, useNavigate } from "react-router-dom";
+import { useLocation, Link, useNavigate, Outlet } from "react-router-dom";
 import { Home, BookOpen, Trophy, Users, Settings, LogIn, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Crown, Menu, X, History, FileCheck } from "lucide-react";
 import { c, headingFont } from "../utils/theme";
 
@@ -136,7 +136,7 @@ export default function Layout({ children }) {
         {/* Main content */}
         <div className="main-scroll">
           <div className="main-content">
-            {children}
+            {children || <Outlet />}
           </div>
         </div>
       </div>

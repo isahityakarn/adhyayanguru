@@ -16,9 +16,9 @@ import {
   Loader2,
   FolderOpen
 } from "lucide-react";
-import { Card, PrimaryButton, Bar } from "../components/UI";
-import { c, headingFont } from "../utils/theme";
-import { get, post } from "../utils/api";
+import { Card, PrimaryButton, Bar } from "../../components/UI";
+import { c, headingFont } from "../../utils/theme";
+import { get, post } from "../../utils/api";
 
 function getStoredUser() {
   try {

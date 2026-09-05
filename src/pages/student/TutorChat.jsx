@@ -3,9 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Mic, Camera, Send, ChevronLeft, ChevronRight, Trash2, Volume2, VolumeX, Square, BookOpen, Maximize2, PanelLeftClose, Settings, RefreshCw, X, CheckCircle2, AlertTriangle, ExternalLink, Sparkles, Sliders } from "lucide-react";
-import { Input, PrimaryButton } from "../components/UI";
-import { speakText, stopSpeech, previewVoice, speakWithEdgeTts, HF_EDGE_TTS_URL, AVAILABLE_VOICES } from "../utils/coquiTts";
-import { get, post, API_BASE_URL } from "../utils/api";
+import { Input, PrimaryButton } from "../../components/UI";
+import { speakText, stopSpeech, previewVoice, speakWithEdgeTts, HF_EDGE_TTS_URL, AVAILABLE_VOICES } from "../../utils/coquiTts";
+import { get, post, API_BASE_URL } from "../../utils/api";
 
 const BACKEND_BASE_URL = (API_BASE_URL || "").replace(/\/api\/?$/, "");
 

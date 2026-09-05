@@ -2,16 +2,16 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Layout from "./components/Layout";
 import LandingPage from "./pages/Landing";
 import LoginPage from "./pages/Login";
-import DashboardPage from "./pages/Dashboard";
-import ChapterListPage from "./pages/ChapterList";
-import TutorChatPage from "./pages/TutorChat";
-import QuizPage from "./pages/Quiz";
-import QuizHistoryPage from "./pages/QuizHistory";
-import AdminQuizManagementPage from "./pages/AdminQuizManagement";
+import DashboardPage from "./pages/student/Dashboard";
+import ChapterListPage from "./pages/student/ChapterList";
+import TutorChatPage from "./pages/student/TutorChat";
+import QuizPage from "./pages/student/Quiz";
+import QuizHistoryPage from "./pages/student/QuizHistory";
+import AdminQuizManagementPage from "./pages/admin/AdminQuizManagement";
 import ParentDashboardPage from "./pages/ParentDashboard";
-import PlansPage from "./pages/Plans";
-import AdminPage from "./pages/Admin";
-import AdminUploadPage from "./pages/AdminUpload";
+import PlansPage from "./pages/student/Plans";
+import AdminPage from "./pages/admin/Admin";
+
 import SubscriptionGuard from "./utils/SubscriptionGuard";
 import "./App.css";
 
@@ -33,8 +33,11 @@ function StudentRoute({ children }) {
 export default function App() {
   return (
     <Router>
-      <Layout>
-        <Routes>
+      <Routes>
+        <Route path="/admin/quizzes" element={<AdminRoute><AdminQuizManagementPage /></AdminRoute>} />
+        <Route path="/admin/*" element={<AdminRoute />} />
+
+        <Route element={<Layout />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<StudentRoute><DashboardPage /></StudentRoute>} />
@@ -84,11 +87,8 @@ export default function App() {
           />
           
           <Route path="/parent" element={<StudentRoute><ParentDashboardPage /></StudentRoute>} />
-          <Route path="/admin" element={<AdminRoute />} />
-          <Route path="/admin/upload" element={<AdminRoute><AdminUploadPage /></AdminRoute>} />
-          <Route path="/admin/quizzes" element={<AdminRoute><AdminQuizManagementPage /></AdminRoute>} />
-        </Routes>
-      </Layout>
+        </Route>
+      </Routes>
     </Router>
   );
 }

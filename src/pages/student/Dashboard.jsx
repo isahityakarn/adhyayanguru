@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Clock, TrendingUp, BookOpen, MessageCircle, Award, Flame, AlertCircle, Sparkles, Zap, Crown, RefreshCw } from "lucide-react";
-import { Card, Bar, PrimaryButton } from "../components/UI";
-import { c, headingFont, displayFont } from "../utils/theme";
-import { get } from "../utils/api";
+import { Card, Bar, PrimaryButton } from "../../components/UI";
+import { c, headingFont, displayFont } from "../../utils/theme";
+import { get } from "../../utils/api";
 
 const getSubjectIcon = (name) => {
   const n = (name || "").toLowerCase();

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, Crown, Zap, Star, Sparkles, ArrowLeft, Loader } from "lucide-react";
-import { Card } from "../components/UI";
-import { c, headingFont, displayFont } from "../utils/theme";
-import { get, post } from "../utils/api";
+import { Card } from "../../components/UI";
+import { c, headingFont, displayFont } from "../../utils/theme";
+import { get, post } from "../../utils/api";
 
 // Helper function to extract items from API response
 function getItems(response) {

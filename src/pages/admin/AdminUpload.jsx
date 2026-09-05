@@ -29,15 +29,15 @@ import {
   FolderPlus,
   Library,
 } from "lucide-react";
-import { Input, PrimaryButton, Select } from "../components/UI";
-import { get, post, del, put } from "../utils/api";
-import { c, headingFont, displayFont } from "../utils/theme";
+import { Input, PrimaryButton, Select } from "../../components/UI";
+import { get, post, del, put } from "../../utils/api";
+import { c, headingFont, displayFont } from "../../utils/theme";
 
 export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Active tab: 'upload' | 'chapters' | 'subjects' | 'questions' | 'batch'
+  // Active tab: 'upload' | 'chapters' | 'subjects' | 'questions'
   const [activeTab, setActiveTab] = useState(
     initialTab || searchParams.get("tab") || "upload",
   );
@@ -104,6 +104,10 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [filterSubClass, setFilterSubClass] = useState("");
   const [filterSubBoard, setFilterSubBoard] = useState("");
   const [newSubjectModalOpen, setNewSubjectModalOpen] = useState(false);
+  const [newClassModalOpen, setNewClassModalOpen] = useState(false);
+  const [isSubmittingClass, setIsSubmittingClass] = useState(false);
+  const [classFormError, setClassFormError] = useState("");
+  const [newClassData, setNewClassData] = useState({ name: "" });
   const [isQuickSubjectModal, setIsQuickSubjectModal] = useState(false);
   const [isSubmittingSubject, setIsSubmittingSubject] = useState(false);
   const [subjectFormError, setSubjectFormError] = useState("");
@@ -148,11 +152,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     ],
   });
 
-  // Batch Processor state
-  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
-  const [batchLimit, setBatchLimit] = useState(3);
-  const [batchResults, setBatchResults] = useState([]);
-  const [batchMessage, setBatchMessage] = useState("");
 
   // Update URL param on tab change
   const handleTabChange = (tab) => {
@@ -345,6 +344,43 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       setSubjectFormError(detailedError);
     } finally {
       setIsSubmittingSubject(false);
+    }
+  }
+
+  // Handle Create Class
+  async function handleSaveClass(e) {
+    e.preventDefault();
+    if (!newClassData.name.trim()) {
+      setClassFormError("Validation failed: Class Name is required.");
+      return;
+    }
+
+    setIsSubmittingClass(true);
+    setClassFormError("");
+
+    try {
+      const response = await post("/admin/classes", {
+        name: newClassData.name.trim(),
+      });
+
+      setNewClassModalOpen(false);
+      setNewClassData({ name: "" });
+      
+      const newClass = response.class;
+      setClasses([...classes, newClass]);
+      setSelectedClass(String(newClass.id));
+      
+      alert(`Class '${newClass.name}' created successfully!`);
+    } catch (error) {
+      let detailedError = "";
+      if (error.errors && Object.keys(error.errors).length > 0) {
+        detailedError = Object.values(error.errors).flat().join(" ");
+      } else {
+        detailedError = error.message || "Failed to create class.";
+      }
+      setClassFormError(detailedError);
+    } finally {
+      setIsSubmittingClass(false);
     }
   }
 
@@ -653,24 +689,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     }
   }
 
-  // Batch Process Unprocessed Chapters
-  async function handleRunBatch() {
-    setIsBatchProcessing(true);
-    setBatchMessage("Processing batch of chapters with Gemini AI...");
-    try {
-      const response = await post("/admin/batch-process", {
-        limit: batchLimit,
-      });
-      setBatchResults(response.processed || []);
-      setBatchMessage(response.message);
-      loadStats();
-      loadChapters();
-    } catch (error) {
-      setBatchMessage(`Batch failed: ${error.message}`);
-    } finally {
-      setIsBatchProcessing(false);
-    }
-  }
 
   // Delete Question from DB
   async function handleDeleteQuestion(questionId) {
@@ -814,59 +832,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         </div>
       </div>
 
-      {/* Navigation Tabs Bar */}
-      <div className="dashboard-tabs-bar">
-        <button
-          className={`dashboard-tab-btn ${activeTab === "upload" ? "active" : ""}`}
-          onClick={() => handleTabChange("upload")}
-        >
-          <Upload size={16} />
-          <span>Upload & Auto-Process</span>
-        </button>
-
-        <button
-          className={`dashboard-tab-btn ${activeTab === "subjects" ? "active" : ""}`}
-          onClick={() => handleTabChange("subjects")}
-        >
-          <Library size={16} />
-          <span>Subjects & Curriculum</span>
-          <span className="dashboard-tab-count">{stats.total_subjects}</span>
-        </button>
-
-        <button
-          className={`dashboard-tab-btn ${activeTab === "chapters" ? "active" : ""}`}
-          onClick={() => handleTabChange("chapters")}
-        >
-          <BookOpen size={16} />
-          <span>Chapters & Content Repository</span>
-          <span className="dashboard-tab-count">{stats.total_chapters}</span>
-        </button>
-
-        <button
-          className={`dashboard-tab-btn ${activeTab === "questions" ? "active" : ""}`}
-          onClick={() => handleTabChange("questions")}
-        >
-          <HelpCircle size={16} />
-          <span>Question Bank (DB)</span>
-          <span className="dashboard-tab-count">{stats.total_questions}</span>
-        </button>
-
-        <button
-          className={`dashboard-tab-btn ${activeTab === "batch" ? "active" : ""}`}
-          onClick={() => handleTabChange("batch")}
-        >
-          <Sparkles size={16} />
-          <span>Batch Auto-Processor</span>
-          {stats.unprocessed_chapters > 0 && (
-            <span
-              className="dashboard-tab-count"
-              style={{ background: "#fee2e2", color: "#b91c1c" }}
-            >
-              {stats.unprocessed_chapters}
-            </span>
-          )}
-        </button>
-      </div>
 
       {/* =========================================================================
           TAB 1: UPLOAD & AUTO PROCESS PDF
@@ -898,12 +863,24 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 {/* Class & Subject row with + Quick Add Subject */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label
-                      className="block text-xs font-bold uppercase tracking-wider mb-2"
-                      style={{ color: c.darkGray }}
-                    >
-                      Class Level *
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label
+                        className="text-xs font-bold uppercase tracking-wider"
+                        style={{ color: c.darkGray }}
+                      >
+                        Class Level *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewClassData({ name: "" });
+                          setNewClassModalOpen(true);
+                        }}
+                        className="text-[11px] text-amber-700 hover:text-amber-900 font-bold flex items-center gap-1 hover:underline"
+                      >
+                        <Plus size={12} /> + Insert New Class
+                      </button>
+                    </div>
                     <select
                       value={selectedClass}
                       onChange={(e) => setSelectedClass(e.target.value)}
@@ -1417,829 +1394,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
         </div>
       )}
 
-      {/* =========================================================================
-          TAB 2: SUBJECTS & CURRICULUM MANAGEMENT
-          ========================================================================= */}
-      {activeTab === "subjects" && (
-        <div className="dashboard-card">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-            <div>
-              <h2
-                className="text-xl font-bold"
-                style={{ ...headingFont, color: c.dark }}
-              >
-                Subjects & Curriculum Database
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Insert new subjects, configure boards and classes, and view
-                chapter counts
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                setIsQuickSubjectModal(false);
-                setEditingSubject(null);
-                setNewSubjectData({
-                  name: "",
-                  class_id: classes[0]?.id || "",
-                  board_id: "1",
-                });
-                setNewSubjectModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold"
-              style={{ background: c.primary, color: "#fff" }}
-            >
-              <Plus size={14} /> Insert New Subject
-            </button>
-          </div>
-
-          {/* Filter & Search Bar */}
-          <div className="filter-bar-container">
-            <div className="search-input-wrapper">
-              <Search size={16} className="search-icon-pos" />
-              <input
-                type="text"
-                placeholder="Search subjects (e.g. Mathematics, Science, Sanskrit)..."
-                className="form-control"
-                value={subjectSearch}
-                onChange={(e) => setSubjectSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && loadAllSubjects()}
-              />
-            </div>
-
-            <select
-              className="form-control"
-              style={{ minWidth: 140, width: "auto" }}
-              value={filterSubClass}
-              onChange={(e) => setFilterSubClass(e.target.value)}
-            >
-              <option value="">All Classes</option>
-              {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>
-                  {cls.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className="form-control"
-              style={{ minWidth: 140, width: "auto" }}
-              value={filterSubBoard}
-              onChange={(e) => setFilterSubBoard(e.target.value)}
-            >
-              <option value="">All Boards</option>
-              {boards.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={loadAllSubjects}
-              className="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-              style={{
-                background: "#f5f2e9",
-                border: "1px solid #e2ddd0",
-                color: c.dark,
-              }}
-            >
-              <Filter size={14} /> Filter
-            </button>
-          </div>
-
-          {/* Subjects Table */}
-          {isLoadingSubjects ? (
-            <div className="text-center py-12 text-gray-500">
-              <RefreshCw
-                size={24}
-                className="pipeline-spinner mx-auto mb-2"
-                color={c.primary}
-              />
-              <p className="text-xs">Loading subjects from database...</p>
-            </div>
-          ) : allSubjects.length === 0 ? (
-            <div className="text-center py-12 bg-amber-50/50 rounded-xl border border-amber-200 text-gray-600">
-              <Library size={32} className="mx-auto mb-2 text-amber-500" />
-              <p className="font-semibold text-sm">No subjects found</p>
-              <p className="text-xs mt-1 text-gray-500">
-                Click "Insert New Subject" to add your first subject.
-              </p>
-            </div>
-          ) : (
-            <div className="table-scroll-wrapper">
-              <table className="admin-data-table">
-                <thead>
-                  <tr>
-                    <th>Subject Name</th>
-                    <th>Class Level</th>
-                    <th>Board</th>
-                    <th>Chapters Count</th>
-                    <th>Created At</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allSubjects.map((sub) => (
-                    <tr key={sub.id}>
-                      <td>
-                        <div
-                          className="font-bold text-sm"
-                          style={{ color: c.dark }}
-                        >
-                          {sub.name}
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className="app-badge app-badge-info">
-                          {sub.class_name}
-                        </span>
-                      </td>
-
-                      <td>
-                        <span className="app-badge app-badge-neutral">
-                          {sub.board_name}
-                        </span>
-                      </td>
-
-                      <td>
-                        {sub.chapters_count > 0 ? (
-                          <span className="app-badge app-badge-success">
-                            <BookOpen size={12} /> {sub.chapters_count} Chapters
-                          </span>
-                        ) : (
-                          <span className="app-badge app-badge-warning">
-                            0 Chapters
-                          </span>
-                        )}
-                      </td>
-
-                      <td>
-                        <span className="text-xs text-gray-500">
-                          {sub.created_at
-                            ? new Date(sub.created_at).toLocaleDateString()
-                            : "System Default"}
-                        </span>
-                      </td>
-
-                      <td style={{ textAlign: "right" }}>
-                        <div className="table-actions-cell justify-end">
-                          <button
-                            className="action-icon-btn"
-                            title="Upload / Modify PDF for Subject"
-                            onClick={() => {
-                              setSelectedClass(String(sub.class_id));
-                              setSelectedSubject(String(sub.id));
-                              handleTabChange("upload");
-                            }}
-                          >
-                            <Upload size={14} />
-                          </button>
-
-                          <button
-                            className="action-icon-btn"
-                            title="Edit Subject Details"
-                            onClick={() => {
-                              setEditingSubject(sub);
-                              setIsQuickSubjectModal(false);
-                              setNewSubjectData({
-                                name: sub.name,
-                                class_id: String(sub.class_id),
-                                board_id: String(sub.board_id || 1),
-                              });
-                              setNewSubjectModalOpen(true);
-                            }}
-                          >
-                            <Edit size={14} />
-                          </button>
-
-                          <button
-                            className="action-icon-btn btn-delete"
-                            title="Delete Subject"
-                            onClick={() =>
-                              handleDeleteSubject(
-                                sub.id,
-                                sub.name,
-                                sub.chapters_count,
-                              )
-                            }
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* =========================================================================
-          TAB 3: CHAPTERS & EXTRACTED CONTENT REPOSITORY
-          ========================================================================= */}
-      {activeTab === "chapters" && (
-        <div className="dashboard-card">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-            <div>
-              <h2
-                className="text-xl font-bold"
-                style={{ ...headingFont, color: c.dark }}
-              >
-                Chapters & Content Database
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Browse stored chapter content, extracted text, and generated
-                question counts
-              </p>
-            </div>
-
-            <button
-              onClick={() => handleTabChange("upload")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ background: c.primary, color: "#fff" }}
-            >
-              <Plus size={14} /> Add Chapter PDF
-            </button>
-          </div>
-
-          {/* Filter & Search Bar */}
-          <div className="filter-bar-container">
-            <div className="search-input-wrapper">
-              <Search size={16} className="search-icon-pos" />
-              <input
-                type="text"
-                placeholder="Search chapter title or description..."
-                className="form-control"
-                value={chapterSearch}
-                onChange={(e) => setChapterSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && loadChapters()}
-              />
-            </div>
-
-            <select
-              className="form-control"
-              style={{ minWidth: 140, width: "auto" }}
-              value={filterClass}
-              onChange={(e) => {
-                setFilterClass(e.target.value);
-                setFilterSubject("");
-              }}
-            >
-              <option value="">All Classes</option>
-              {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>
-                  {cls.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className="form-control"
-              style={{ minWidth: 150, width: "auto" }}
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="all">All Statuses</option>
-              <option value="processed">Content Extracted</option>
-              <option value="unprocessed">Unprocessed</option>
-            </select>
-
-            <button
-              onClick={loadChapters}
-              className="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-              style={{
-                background: "#f5f2e9",
-                border: "1px solid #e2ddd0",
-                color: c.dark,
-              }}
-            >
-              <Filter size={14} /> Apply Filter
-            </button>
-          </div>
-
-          {/* Chapters Table */}
-          {isLoadingChapters ? (
-            <div className="text-center py-12 text-gray-500">
-              <RefreshCw
-                size={24}
-                className="pipeline-spinner mx-auto mb-2"
-                color={c.primary}
-              />
-              <p className="text-xs">Loading chapters from database...</p>
-            </div>
-          ) : chapters.length === 0 ? (
-            <div className="text-center py-12 bg-amber-50/50 rounded-xl border border-amber-200 text-gray-600">
-              <BookOpen size={32} className="mx-auto mb-2 text-amber-500" />
-              <p className="font-semibold text-sm">
-                No chapters found matching criteria
-              </p>
-              <p className="text-xs mt-1 text-gray-500">
-                Upload a chapter PDF to begin or clear filters.
-              </p>
-            </div>
-          ) : (
-            <div className="table-scroll-wrapper">
-              <table className="admin-data-table">
-                <thead>
-                  <tr>
-                    <th>Chapter</th>
-                    <th>Class / Subject</th>
-                    <th>Extracted Text Status</th>
-                    <th>DB Questions</th>
-                    <th>PDF File</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {chapters.map((ch) => (
-                    <tr key={ch.id}>
-                      <td>
-                        <div
-                          className="font-bold text-sm"
-                          style={{ color: c.dark }}
-                        >
-                          Ch {ch.chapter_number}: {ch.title}
-                        </div>
-                        {ch.text_preview && (
-                          <div className="text-xs text-gray-500 mt-1 line-clamp-1 max-w-md">
-                            {ch.text_preview}...
-                          </div>
-                        )}
-                      </td>
-
-                      <td>
-                        <span className="app-badge app-badge-neutral">
-                          {ch.class} · {ch.subject}
-                        </span>
-                      </td>
-
-                      <td>
-                        {ch.has_extracted_text ? (
-                          <span className="app-badge app-badge-success">
-                            <CheckCircle size={12} />{" "}
-                            {ch.text_length?.toLocaleString()} chars
-                          </span>
-                        ) : (
-                          <span className="app-badge app-badge-danger">
-                            <XCircle size={12} /> No Text Extracted
-                          </span>
-                        )}
-                      </td>
-
-                      <td>
-                        {ch.questions_count > 0 ? (
-                          <span className="app-badge app-badge-info">
-                            <HelpCircle size={12} /> {ch.questions_count}{" "}
-                            Questions
-                          </span>
-                        ) : (
-                          <span className="app-badge app-badge-warning">
-                            0 Questions
-                          </span>
-                        )}
-                      </td>
-
-                      <td>
-                        {ch.source_file_url ? (
-                          <span
-                            className="text-xs font-mono text-gray-600 truncate block max-w-[140px]"
-                            title={ch.source_file_url}
-                          >
-                            {ch.source_file_url}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">No PDF</span>
-                        )}
-                      </td>
-
-                      <td style={{ textAlign: "right" }}>
-                        <div className="table-actions-cell justify-end">
-                          <button
-                            className="action-icon-btn"
-                            title="Upload / Modify PDF for Chapter"
-                            onClick={() => {
-                              if (ch.class_id)
-                                setSelectedClass(String(ch.class_id));
-                              if (ch.subject_id)
-                                setSelectedSubject(String(ch.subject_id));
-                              if (ch.chapter_number)
-                                setChapterNumber(String(ch.chapter_number));
-                              if (ch.title) setTitle(ch.title);
-                              handleTabChange("upload");
-                            }}
-                          >
-                            <Upload size={14} />
-                          </button>
-
-                          <button
-                            className="action-icon-btn"
-                            title="Inspect Text & DB Questions"
-                            onClick={() => openInspectModal(ch.id)}
-                          >
-                            <Eye size={15} />
-                          </button>
-
-                          <button
-                            className="action-icon-btn"
-                            title="Reprocess with AI (Re-extract text & questions)"
-                            disabled={reprocessingId === ch.id || !ch.has_pdf}
-                            onClick={() => handleReprocess(ch.id)}
-                          >
-                            <RefreshCw
-                              size={14}
-                              className={
-                                reprocessingId === ch.id
-                                  ? "pipeline-spinner"
-                                  : ""
-                              }
-                            />
-                          </button>
-
-                          <button
-                            className="action-icon-btn"
-                            title="Generate More AI Questions"
-                            disabled={reprocessingId === ch.id}
-                            onClick={() => handleGenerateMoreQuestions(ch.id)}
-                          >
-                            <Plus size={15} />
-                          </button>
-
-                          <button
-                            className="action-icon-btn"
-                            title="Launch Quiz Test"
-                            onClick={() =>
-                              navigate(`/quiz?chapter_id=${ch.id}`)
-                            }
-                          >
-                            <Play size={14} />
-                          </button>
-
-                          <button
-                            className="action-icon-btn btn-delete"
-                            title="Delete Chapter"
-                            onClick={() => handleDeleteChapter(ch.id, ch.title)}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* =========================================================================
-          TAB 4: DATABASE QUESTION BANK
-          ========================================================================= */}
-      {activeTab === "questions" && (
-        <div className="dashboard-card">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-            <div>
-              <h2
-                className="text-xl font-bold"
-                style={{ ...headingFont, color: c.dark }}
-              >
-                Question Bank Repository (Database)
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                All questions generated by Gemini and stored in the database for
-                quizzes & assessments
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                setNewQuestionData({
-                  chapter_id: chapters[0]?.id || "",
-                  question_text: "",
-                  question_type: "mcq",
-                  difficulty: "medium",
-                  correct_answer: "A",
-                  options: [
-                    { letter: "A", text: "" },
-                    { letter: "B", text: "" },
-                    { letter: "C", text: "" },
-                    { letter: "D", text: "" },
-                  ],
-                });
-                setAddQuestionModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ background: c.primary, color: "#fff" }}
-            >
-              <Plus size={14} /> Add Custom Question
-            </button>
-          </div>
-
-          {/* Filter Bar */}
-          <div className="filter-bar-container">
-            <div className="search-input-wrapper">
-              <Search size={16} className="search-icon-pos" />
-              <input
-                type="text"
-                placeholder="Search question text..."
-                className="form-control"
-                value={questionSearch}
-                onChange={(e) => setQuestionSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && loadQuestions()}
-              />
-            </div>
-
-            <select
-              className="form-control"
-              style={{ minWidth: 150, width: "auto" }}
-              value={filterQType}
-              onChange={(e) => setFilterQType(e.target.value)}
-            >
-              <option value="all">All Types</option>
-              <option value="mcq">Multiple Choice (MCQ)</option>
-              <option value="short_answer">Short Answer</option>
-            </select>
-
-            <select
-              className="form-control"
-              style={{ minWidth: 140, width: "auto" }}
-              value={filterQDifficulty}
-              onChange={(e) => setFilterQDifficulty(e.target.value)}
-            >
-              <option value="all">All Difficulties</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-
-            <button
-              onClick={loadQuestions}
-              className="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-              style={{
-                background: "#f5f2e9",
-                border: "1px solid #e2ddd0",
-                color: c.dark,
-              }}
-            >
-              <Filter size={14} /> Filter Questions
-            </button>
-          </div>
-
-          {/* Question Cards Grid */}
-          {isLoadingQuestions ? (
-            <div className="text-center py-12 text-gray-500">
-              <RefreshCw
-                size={24}
-                className="pipeline-spinner mx-auto mb-2"
-                color={c.primary}
-              />
-              <p className="text-xs">Loading question bank...</p>
-            </div>
-          ) : questions.length === 0 ? (
-            <div className="text-center py-12 bg-amber-50/50 rounded-xl border border-amber-200 text-gray-600">
-              <HelpCircle size={32} className="mx-auto mb-2 text-amber-500" />
-              <p className="font-semibold text-sm">
-                No questions in database yet
-              </p>
-              <p className="text-xs mt-1 text-gray-500">
-                Upload a PDF or reprocess existing chapters to auto-generate
-                questions.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {questions.map((q, idx) => (
-                <div key={q.id || idx} className="question-item-card">
-                  <div className="question-item-header">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="app-badge app-badge-info uppercase text-[10px]">
-                        {q.question_type === "mcq"
-                          ? "Multiple Choice"
-                          : "Short Answer"}
-                      </span>
-                      <span
-                        className={`app-badge ${
-                          q.difficulty === "easy"
-                            ? "app-badge-success"
-                            : q.difficulty === "hard"
-                              ? "app-badge-danger"
-                              : "app-badge-warning"
-                        } uppercase text-[10px]`}
-                      >
-                        {q.difficulty}
-                      </span>
-                      {q.chapter && (
-                        <span className="text-xs text-gray-500 font-medium">
-                          {q.chapter.subject?.class_level?.name || "Class"} ·{" "}
-                          {q.chapter.subject?.name} · Ch{" "}
-                          {q.chapter.chapter_number}: {q.chapter.title}
-                        </span>
-                      )}
-                    </div>
-
-                    <button
-                      className="action-icon-btn btn-delete"
-                      title="Delete Question"
-                      onClick={() => handleDeleteQuestion(q.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-
-                  <h3
-                    className="text-sm font-bold mb-3"
-                    style={{ color: c.dark }}
-                  >
-                    {idx + 1}. {q.question_text}
-                  </h3>
-
-                  {q.question_type === "mcq" &&
-                    q.options &&
-                    Array.isArray(q.options) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                        {q.options.map((opt, optIdx) => {
-                          const isCorrect =
-                            opt.letter === q.correct_answer || opt.correct;
-                          return (
-                            <div
-                              key={optIdx}
-                              className={`question-mcq-option ${isCorrect ? "is-correct" : ""}`}
-                            >
-                              <div className="option-letter-badge">
-                                {opt.letter}
-                              </div>
-                              <span className="flex-1">{opt.text}</span>
-                              {isCorrect && (
-                                <CheckCircle size={14} color="#306a5a" />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                  {q.question_type === "short_answer" && (
-                    <div
-                      className="p-2.5 rounded-lg mb-3 text-xs"
-                      style={{ background: "#dcede6", color: "#306a5a" }}
-                    >
-                      <strong>Model Answer:</strong> {q.correct_answer}
-                    </div>
-                  )}
-
-                  {q.explanation && (
-                    <div className="question-explanation-box">
-                      💡 <strong>Explanation:</strong> {q.explanation}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* =========================================================================
-          TAB 5: BATCH AUTO-PROCESSOR
-          ========================================================================= */}
-      {activeTab === "batch" && (
-        <div className="dashboard-card">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2
-                className="text-xl font-bold"
-                style={{ ...headingFont, color: c.dark }}
-              >
-                Batch PDF Ingestion Processor
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Automatically extract text and generate AI questions for
-                existing textbook PDFs in storage
-              </p>
-            </div>
-            <span className="app-badge app-badge-warning">
-              {stats.unprocessed_chapters} Pending Processing
-            </span>
-          </div>
-
-          <div
-            className="p-5 rounded-xl mb-6"
-            style={{ background: "#faf8f2", border: "1px solid #e8e4da" }}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h3 className="font-bold text-sm" style={{ color: c.dark }}>
-                  One-Click Auto-Ingestion
-                </h3>
-                <p className="text-xs text-gray-600 mt-1 max-w-lg">
-                  Scans all chapters in the database with assigned PDF files
-                  that don't have extracted text or questions yet. It processes
-                  them sequentially using Gemini AI and stores questions
-                  directly into the database.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase text-gray-500 mb-1">
-                    Batch Size
-                  </label>
-                  <select
-                    className="form-control"
-                    style={{ minHeight: 38, padding: "6px 12px" }}
-                    value={batchLimit}
-                    onChange={(e) =>
-                      setBatchLimit(parseInt(e.target.value, 10))
-                    }
-                    disabled={isBatchProcessing}
-                  >
-                    <option value="1">1 Chapter</option>
-                    <option value="3">3 Chapters</option>
-                    <option value="5">5 Chapters</option>
-                  </select>
-                </div>
-
-                <div className="pt-4">
-                  <PrimaryButton
-                    type="button"
-                    disabled={
-                      isBatchProcessing || stats.unprocessed_chapters === 0
-                    }
-                    onClick={handleRunBatch}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    {isBatchProcessing ? (
-                      <>
-                        <RefreshCw size={16} className="pipeline-spinner" />
-                        Processing Batch...
-                      </>
-                    ) : (
-                      <>
-                        <Play size={16} />
-                        Process Next Batch
-                      </>
-                    )}
-                  </PrimaryButton>
-                </div>
-              </div>
-            </div>
-
-            {batchMessage && (
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-xs flex items-center gap-2">
-                <Brain size={16} />
-                <span>{batchMessage}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Batch results list */}
-          {batchResults.length > 0 && (
-            <div>
-              <h3 className="font-bold text-sm mb-3" style={{ color: c.dark }}>
-                Recently Processed in this Batch
-              </h3>
-              <div className="space-y-2">
-                {batchResults.map((r) => (
-                  <div
-                    key={r.id}
-                    className="p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <CheckCircle size={16} color="#10b981" />
-                      <span className="font-bold" style={{ color: c.dark }}>
-                        {r.title}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {r.text_length && (
-                        <span className="app-badge app-badge-success">
-                          {r.text_length} chars extracted
-                        </span>
-                      )}
-                      {r.questions_count && (
-                        <span className="app-badge app-badge-info">
-                          {r.questions_count} questions generated in DB
-                        </span>
-                      )}
-                      <button
-                        className="text-amber-700 font-bold hover:underline"
-                        onClick={() => openInspectModal(r.id)}
-                      >
-                        Inspect
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* =========================================================================
           INSERT / EDIT SUBJECT MODAL
@@ -2794,6 +1948,93 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
               <div className="pt-2">
                 <PrimaryButton type="submit" className="w-full">
                   Save Question to Database
+                </PrimaryButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          INSERT NEW CLASS MODAL
+          ========================================================================= */}
+      {newClassModalOpen && (
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => setNewClassModalOpen(false)}
+        >
+          <div
+            className="admin-modal-container max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal-header">
+              <div className="flex items-center gap-2">
+                <FolderPlus size={20} color={c.primary} />
+                <h2
+                  className="text-lg font-bold"
+                  style={{ ...headingFont, color: c.dark }}
+                >
+                  Insert New Class
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="action-icon-btn"
+                onClick={() => setNewClassModalOpen(false)}
+              >
+                <XCircle size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSaveClass}
+              className="admin-modal-body space-y-4"
+            >
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: c.darkGray }}
+                >
+                  Class Name *
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Class 10, Class 12 Science..."
+                  value={newClassData.name}
+                  onChange={(e) =>
+                    setNewClassData({
+                      ...newClassData,
+                      name: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+
+              {classFormError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs flex items-center gap-2">
+                  <XCircle size={15} />
+                  <span>{classFormError}</span>
+                </div>
+              )}
+
+              <div className="pt-2">
+                <PrimaryButton
+                  type="submit"
+                  disabled={isSubmittingClass}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  {isSubmittingClass ? (
+                    <>
+                      <RefreshCw size={16} className="pipeline-spinner" />
+                      Saving Class...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      Insert Class into Database
+                    </>
+                  )}
                 </PrimaryButton>
               </div>
             </form>
