@@ -76,8 +76,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [pdfFile, setPdfFile] = useState(null);
-  const [questionCount, setQuestionCount] = useState(10);
-  const [difficulty, setDifficulty] = useState("mixed");
 
   // Drag and drop state
   const [isDragging, setIsDragging] = useState(false);
@@ -542,8 +540,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       formData.append("pdf_file", pdfFile);
       formData.append("pdf_base64", base64Data);
       formData.append("pdf_name", pdfFile.name);
-      formData.append("question_count", questionCount);
-      formData.append("difficulty", difficulty);
 
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"}/admin/upload`,
@@ -976,73 +972,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                       onChange={(e) => setTitle(e.target.value)}
                       required
                     />
-                  </div>
-                </div>
-
-                {/* AI Configuration Preferences */}
-                <div
-                  className="p-4 rounded-xl"
-                  style={{ background: "#faf8f2", border: "1px solid #e8e4da" }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles size={16} color={c.primary} />
-                    <span
-                      className="text-xs font-bold uppercase tracking-wider"
-                      style={{ color: c.dark }}
-                    >
-                      AI Question Generation Settings
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        className="block text-xs font-semibold mb-1.5"
-                        style={{ color: c.gray }}
-                      >
-                        Questions to Generate in DB
-                      </label>
-                      <select
-                        className="form-control"
-                        value={questionCount}
-                        onChange={(e) =>
-                          setQuestionCount(parseInt(e.target.value, 10))
-                        }
-                      >
-                        <option value="10">
-                          10 Questions (Recommended: MCQs & Conceptual
-                          Questions)
-                        </option>
-                        <option value="8">8 Questions (Comprehensive)</option>
-                        <option value="6">6 Questions (Standard)</option>
-                        <option value="4">4 Questions (Fast)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-xs font-semibold mb-1.5"
-                        style={{ color: c.gray }}
-                      >
-                        Target Difficulty
-                      </label>
-                      <select
-                        className="form-control"
-                        value={difficulty}
-                        onChange={(e) => setDifficulty(e.target.value)}
-                      >
-                        <option value="mixed">
-                          Mixed (Easy, Medium & Hard)
-                        </option>
-                        <option value="easy">
-                          Easy (Foundation / Beginner)
-                        </option>
-                        <option value="medium">
-                          Medium (Standard Assessment)
-                        </option>
-                        <option value="hard">Hard (Advanced / Olympiad)</option>
-                      </select>
-                    </div>
                   </div>
                 </div>
 

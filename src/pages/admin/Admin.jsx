@@ -35,6 +35,7 @@ import {
 } from "../../services/pdfApi";
 import { downloadFile, get, post } from "../../utils/api";
 import AdminUploadPage from "./AdminUpload";
+import CurriculumExplorer from "./components/CurriculumExplorer";
 
 const navGroups = [
   {
@@ -589,13 +590,8 @@ export default function AdminPage() {
             />
           )}
           {section === "classes" && (
-            <ClassesView
-              classes={visibleClasses}
-              loading={loading}
-              search={search}
-              setSearch={setSearch}
-              onClass={openClass}
-              onDownload={handleClassDownload}
+            <CurriculumExplorer
+              classes={classes}
               onOpenUploadModal={openUploadModal}
             />
           )}
