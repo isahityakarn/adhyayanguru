@@ -391,16 +391,6 @@ export default function AdminPage() {
     setUploadModalError("");
 
     try {
-      let base64Data = null;
-      if (uploadFile) {
-        base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(uploadFile);
-        });
-      }
-
       const form = new FormData();
       if (editingPdf) {
         form.append("id", editingPdf.id);
@@ -415,7 +405,6 @@ export default function AdminPage() {
       if (uploadFile) {
         form.append("file", uploadFile);
         form.append("pdf_file", uploadFile);
-        form.append("pdf_base64", base64Data);
         form.append("pdf_name", uploadFile.name);
       }
 
@@ -427,9 +416,6 @@ export default function AdminPage() {
             chapter_number: uploadChapterNumber,
             title: uploadTitle.trim(),
             name: uploadTitle.trim(),
-            ...(base64Data
-              ? { pdf_base64: base64Data, pdf_name: uploadFile.name }
-              : {}),
           });
         } catch {
           await uploadPdf(form);

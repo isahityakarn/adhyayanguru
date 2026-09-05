@@ -424,27 +424,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     }
   }
 
-  // Load Questions Bank
-  async function loadQuestions() {
-    setIsLoadingQuestions(true);
-    try {
-      const params = new URLSearchParams();
-      if (filterQChapter) params.append("chapter_id", filterQChapter);
-      if (filterQType && filterQType !== "all")
-        params.append("question_type", filterQType);
-      if (filterQDifficulty && filterQDifficulty !== "all")
-        params.append("difficulty", filterQDifficulty);
-      if (questionSearch) params.append("search", questionSearch);
-
-      const response = await get(`/admin/questions?${params.toString()}`);
-      setQuestions(response.data || []);
-    } catch (error) {
-      console.error("Failed to load questions:", error);
-    } finally {
-      setIsLoadingQuestions(false);
-    }
-  }
-
   // Handle Drag & Drop
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -523,14 +502,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     const stageTimer3 = setTimeout(() => setUploadStage(4), 5500); // Saving to DB
 
     try {
-      // Convert file to base64 to ensure upload succeeds regardless of PHP INI limits
-      const base64Data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(pdfFile);
-      });
-
       const formData = new FormData();
       formData.append("class_id", selectedClass);
       formData.append("subject_id", selectedSubject);
@@ -538,7 +509,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       formData.append("title", title.trim());
       formData.append("description", description);
       formData.append("pdf_file", pdfFile);
-      formData.append("pdf_base64", base64Data);
       formData.append("pdf_name", pdfFile.name);
 
       const response = await fetch(

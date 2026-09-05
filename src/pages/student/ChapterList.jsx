@@ -325,6 +325,8 @@ export default function ChapterListPage() {
                 const isCompleted = statusData?.chapter_completed;
                 const attempts = statusData?.attempts || 0;
                 const bestScore = statusData?.best_score || 0;
+                const isQuizAvailable = statusData?.quiz_available;
+                const quiz = statusData?.quiz;
 
                 return (
                   <Card key={ch.id} className="border border-gray-200 hover:border-amber-300 transition-all flex flex-col justify-between">
@@ -370,12 +372,21 @@ export default function ChapterListPage() {
                               <span>Attempts: {attempts}</span>
                             </div>
                           </div>
+                        ) : !isQuizAvailable ? (
+                          <div>
+                            <div className="font-extrabold text-gray-500 flex items-center gap-1">
+                              <Lock size={13} /> No Quiz Yet
+                            </div>
+                            <p className="text-gray-500 text-[11px] mt-0.5">Quiz generation in progress or not uploaded.</p>
+                          </div>
                         ) : (
                           <div>
                             <div className="font-extrabold text-emerald-700 flex items-center gap-1">
                               <Unlock size={13} /> 🔓 Quiz Available
                             </div>
-                            <p className="text-gray-600 text-[11px] font-medium mt-0.5">50 MCQs + 20 Written Questions</p>
+                            <p className="text-gray-600 text-[11px] font-medium mt-0.5">
+                              {quiz?.total_mcq || 0} MCQs + {quiz?.total_written || 0} Written Questions
+                            </p>
                           </div>
                         )}
                       </div>
@@ -412,7 +423,7 @@ export default function ChapterListPage() {
                         </button>
                       </div>
 
-                      {isCompleted ? (
+                      {isCompleted && isQuizAvailable ? (
                         <PrimaryButton
                           onClick={() => navigate(`/quiz?chapter_id=${ch.id}`)}
                           className="w-full py-2 text-xs font-bold flex items-center justify-center gap-1.5"
@@ -423,10 +434,17 @@ export default function ChapterListPage() {
                             </>
                           ) : (
                             <>
-                              <Play size={14} /> Start Quiz (50 MCQ + 20 Written)
+                              <Play size={14} /> Start Quiz ({quiz?.total_mcq || 0} MCQ + {quiz?.total_written || 0} Written)
                             </>
                           )}
                         </PrimaryButton>
+                      ) : isCompleted && !isQuizAvailable ? (
+                        <button
+                          disabled
+                          className="w-full py-2 text-xs font-bold rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed flex items-center justify-center gap-1.5"
+                        >
+                          <Lock size={14} /> No Quiz Generated Yet
+                        </button>
                       ) : (
                         <button
                           disabled
