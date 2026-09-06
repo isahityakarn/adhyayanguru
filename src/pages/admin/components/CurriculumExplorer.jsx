@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ArrowLeft, BookOpen, FileText, LayoutList, Layers, ExternalLink, MessageCircle, PenTool, CheckCircle, Search, HelpCircle, FileQuestion, Book } from 'lucide-react';
-import { get, post } from '../../../utils/api';
+import { ChevronRight, ArrowLeft, BookOpen, FileText, LayoutList, Layers, ExternalLink, MessageCircle, PenTool, CheckCircle, Search, HelpCircle, FileQuestion, Book, Trash2 } from 'lucide-react';
+import { get, post, del } from '../../../utils/api';
 import './CurriculumExplorer.css';
 
 export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
@@ -46,6 +46,23 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
       alert("Error generating questions: " + err.message);
     } finally {
       setGeneratingType(null);
+    }
+  };
+
+  const handleDeleteQuestion = async (questionId) => {
+    if (!questionId) {
+      alert("Cannot delete this question. Missing ID.");
+      return;
+    }
+    if (!confirm("Are you sure you want to delete this question? This action cannot be undone.")) return;
+    
+    try {
+      await del(`/admin/questions/${questionId}`);
+      // Reload chapter details
+      const refresh = await get(`/admin/chapters/${chapterDetails.id}`);
+      setData(refresh.chapter);
+    } catch (err) {
+      alert("Error deleting question: " + err.message);
     }
   };
 
@@ -263,8 +280,17 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
             {mcqs.length > 0 ? (
               <div className="ce-questions-list">
                 {mcqs.map((q, i) => (
-                  <div key={i} className="ce-q-card">
-                    <p className="ce-q-text"><strong>Q{i+1}.</strong> {q.question_text || q.question}</p>
+                  <div key={q.id || i} className="ce-q-card" style={{ position: 'relative' }}>
+                    <button 
+                      onClick={() => handleDeleteQuestion(q.id)} 
+                      style={{ position: 'absolute', top: '12px', right: '12px', background: '#fee2e2', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                      title="Delete Question"
+                      onMouseOver={(e) => e.currentTarget.style.background = '#fca5a5'}
+                      onMouseOut={(e) => e.currentTarget.style.background = '#fee2e2'}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                    <p className="ce-q-text" style={{ paddingRight: '30px' }}><strong>Q{i+1}.</strong> {q.question_text || q.question}</p>
                     <div className="ce-q-options">
                        {q.options && Array.isArray(q.options) ? q.options.map((opt, oi) => (
                           <div key={oi} className={`ce-q-opt ${q.correct_answer === opt.letter || q.correct_answer === opt.text ? 'correct' : ''}`}>
@@ -284,8 +310,17 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
             {written.length > 0 ? (
               <div className="ce-questions-list">
                 {written.map((q, i) => (
-                  <div key={i} className="ce-q-card">
-                    <p className="ce-q-text"><strong>Q{i+1}.</strong> {q.question_text || q.question}</p>
+                  <div key={q.id || i} className="ce-q-card" style={{ position: 'relative' }}>
+                    <button 
+                      onClick={() => handleDeleteQuestion(q.id)} 
+                      style={{ position: 'absolute', top: '12px', right: '12px', background: '#fee2e2', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                      title="Delete Question"
+                      onMouseOver={(e) => e.currentTarget.style.background = '#fca5a5'}
+                      onMouseOut={(e) => e.currentTarget.style.background = '#fee2e2'}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                    <p className="ce-q-text" style={{ paddingRight: '30px' }}><strong>Q{i+1}.</strong> {q.question_text || q.question}</p>
                     <div className="ce-q-answer">
                        <span className="ce-ans-label">Expected Answer:</span>
                        <p>{q.expected_answer || q.answer || q.correct_answer || 'Detailed answer expected.'}</p>
