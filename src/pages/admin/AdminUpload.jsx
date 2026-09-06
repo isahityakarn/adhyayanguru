@@ -6,32 +6,16 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
-  List,
-  Search,
-  Eye,
   Plus,
-  Trash2,
-  Edit,
-  HelpCircle,
-  BookOpen,
   Sparkles,
   Layers,
-  ArrowRight,
-  ExternalLink,
   Copy,
   Check,
-  Brain,
-  Sliders,
-  Filter,
-  Play,
-  FileCheck,
-  AlertTriangle,
-  FolderPlus,
   Library,
 } from "lucide-react";
-import { Input, PrimaryButton, Select } from "../../components/UI";
-import { get, post, del, put } from "../../utils/api";
-import { c, headingFont, displayFont } from "../../utils/theme";
+import { Input, PrimaryButton } from "../../components/UI";
+import { get, post, put } from "../../utils/api";
+import { c } from "../../utils/theme";
 
 export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -87,20 +71,7 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [uploadResult, setUploadResult] = useState(null);
   const [uploadError, setUploadError] = useState("");
 
-  // Chapters list state
-  const [chapters, setChapters] = useState([]);
-  const [isLoadingChapters, setIsLoadingChapters] = useState(false);
-  const [chapterSearch, setChapterSearch] = useState("");
-  const [filterClass, setFilterClass] = useState("");
-  const [filterSubject, setFilterSubject] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all"); // 'all' | 'processed' | 'unprocessed'
-
   // Subjects management state
-  const [allSubjects, setAllSubjects] = useState([]);
-  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
-  const [subjectSearch, setSubjectSearch] = useState("");
-  const [filterSubClass, setFilterSubClass] = useState("");
-  const [filterSubBoard, setFilterSubBoard] = useState("");
   const [newSubjectModalOpen, setNewSubjectModalOpen] = useState(false);
   const [newClassModalOpen, setNewClassModalOpen] = useState(false);
   const [isSubmittingClass, setIsSubmittingClass] = useState(false);
@@ -116,13 +87,7 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   });
   const [editingSubject, setEditingSubject] = useState(null);
 
-  // Questions bank state
-  const [questions, setQuestions] = useState([]);
-  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
-  const [questionSearch, setQuestionSearch] = useState("");
-  const [filterQChapter, setFilterQChapter] = useState("");
-  const [filterQType, setFilterQType] = useState("all");
-  const [filterQDifficulty, setFilterQDifficulty] = useState("all");
+
 
   // Modal / Drawer state for inspecting chapter
   const [inspectModalOpen, setInspectModalOpen] = useState(false);
@@ -131,24 +96,8 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [inspectActiveTab, setInspectActiveTab] = useState("content"); // 'content' | 'questions' | 'pages' | 'pdf'
   const [copiedText, setCopiedText] = useState(false);
 
-  // Reprocess state per chapter
-  const [reprocessingId, setReprocessingId] = useState(null);
 
-  // Add Question Modal state
-  const [addQuestionModalOpen, setAddQuestionModalOpen] = useState(false);
-  const [newQuestionData, setNewQuestionData] = useState({
-    chapter_id: "",
-    question_text: "",
-    question_type: "mcq",
-    difficulty: "medium",
-    correct_answer: "A",
-    options: [
-      { letter: "A", text: "" },
-      { letter: "B", text: "" },
-      { letter: "C", text: "" },
-      { letter: "D", text: "" },
-    ],
-  });
+
 
 
   // Update URL param on tab change
@@ -159,8 +108,7 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       loadChapters();
     } else if (tab === "subjects") {
       loadAllSubjects();
-    } else if (tab === "questions") {
-      loadQuestions();
+
     } else if (tab === "upload") {
       loadStats();
     }
@@ -382,48 +330,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
     }
   }
 
-  // Handle Delete Subject
-  async function handleDeleteSubject(subjectId, subjectName, chaptersCount) {
-    const confirmMsg =
-      chaptersCount > 0
-        ? `Warning: Subject '${subjectName}' has ${chaptersCount} chapter(s) linked to it. Are you sure you want to force-delete it?`
-        : `Are you sure you want to delete subject '${subjectName}'?`;
-
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      await del(
-        `/admin/subjects/${subjectId}${chaptersCount > 0 ? "?force=1" : ""}`,
-      );
-      alert(`Subject '${subjectName}' deleted successfully.`);
-      loadAllSubjects();
-      loadStats();
-      if (selectedClass) loadSubjectsForClass(selectedClass);
-    } catch (error) {
-      alert(`Failed to delete subject: ${error.message}`);
-    }
-  }
-
-  // Load Chapters with filters
-  async function loadChapters() {
-    setIsLoadingChapters(true);
-    try {
-      const params = new URLSearchParams();
-      if (filterClass) params.append("class_id", filterClass);
-      if (filterSubject) params.append("subject_id", filterSubject);
-      if (filterStatus && filterStatus !== "all")
-        params.append("status", filterStatus);
-      if (chapterSearch) params.append("search", chapterSearch);
-
-      const response = await get(`/admin/chapters?${params.toString()}`);
-      setChapters(response.chapters || []);
-    } catch (error) {
-      console.error("Failed to load chapters:", error);
-    } finally {
-      setIsLoadingChapters(false);
-    }
-  }
-
   // Handle Drag & Drop
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -559,120 +465,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
       clearTimeout(stageTimer2);
       clearTimeout(stageTimer3);
       setIsUploading(false);
-    }
-  }
-
-  // Handle Reprocess Chapter
-  async function handleReprocess(chapterId) {
-    setReprocessingId(chapterId);
-    try {
-      const response = await post(`/admin/chapters/${chapterId}/reprocess`);
-      alert(
-        `Success! Extracted ${response.chapter.text_length} characters and saved ${response.chapter.questions_count} questions into the database.`,
-      );
-      loadChapters();
-      loadStats();
-      if (inspectedChapter && inspectedChapter.id === chapterId) {
-        openInspectModal(chapterId);
-      }
-    } catch (error) {
-      alert(`Failed to reprocess: ${error.message}`);
-    } finally {
-      setReprocessingId(null);
-    }
-  }
-
-  // Handle Generate More Questions
-  async function handleGenerateMoreQuestions(chapterId) {
-    const countStr = prompt(
-      "How many additional questions would you like to generate and add to DB?",
-      "4",
-    );
-    if (!countStr) return;
-    const count = parseInt(countStr, 10);
-    if (isNaN(count) || count < 1 || count > 10) {
-      alert("Please enter a valid number between 1 and 10.");
-      return;
-    }
-
-    setReprocessingId(chapterId);
-    try {
-      const response = await post(
-        `/admin/chapters/${chapterId}/generate-questions`,
-        {
-          count,
-          difficulty: "mixed",
-          replace_existing: false,
-        },
-      );
-      alert(
-        `Success! Generated ${response.new_questions_count} new questions. Total in DB: ${response.total_questions_count}`,
-      );
-      loadChapters();
-      loadStats();
-      if (inspectedChapter && inspectedChapter.id === chapterId) {
-        openInspectModal(chapterId);
-      }
-    } catch (error) {
-      alert(`Error generating questions: ${error.message}`);
-    } finally {
-      setReprocessingId(null);
-    }
-  }
-
-  // Inspect Chapter Modal
-  async function openInspectModal(chapterId) {
-    setIsLoadingInspect(true);
-    setInspectModalOpen(true);
-    try {
-      const response = await get(`/admin/chapters/${chapterId}`);
-      setInspectedChapter(response.chapter);
-    } catch (error) {
-      alert(`Failed to load chapter details: ${error.message}`);
-      setInspectModalOpen(false);
-    } finally {
-      setIsLoadingInspect(false);
-    }
-  }
-
-  // Delete Chapter
-  async function handleDeleteChapter(chapterId, chapterTitle) {
-    if (
-      !confirm(
-        `Are you sure you want to delete chapter "${chapterTitle}" and all its extracted text and questions from database?`,
-      )
-    ) {
-      return;
-    }
-    try {
-      await del(`/admin/chapters/${chapterId}`);
-      alert("Chapter and related records deleted successfully.");
-      loadChapters();
-      loadStats();
-      if (inspectModalOpen) setInspectModalOpen(false);
-    } catch (error) {
-      alert(`Failed to delete chapter: ${error.message}`);
-    }
-  }
-
-
-  // Delete Question from DB
-  async function handleDeleteQuestion(questionId) {
-    if (
-      !confirm(
-        "Are you sure you want to delete this question from the database?",
-      )
-    )
-      return;
-    try {
-      await del(`/admin/questions/${questionId}`);
-      loadQuestions();
-      loadStats();
-      if (inspectedChapter) {
-        openInspectModal(inspectedChapter.id);
-      }
-    } catch (error) {
-      alert(`Failed to delete question: ${error.message}`);
     }
   }
 
@@ -1275,18 +1067,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                   <ArrowRight size={14} color={c.gray} />
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleTabChange("questions")}
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg text-xs font-semibold hover:bg-amber-50 transition-colors"
-                  style={{ border: "1px solid #e8e4da", color: c.dark }}
-                >
-                  <span className="flex items-center gap-2">
-                    <HelpCircle size={14} color={c.accent} />
-                    Explore {stats.total_questions} DB Questions
-                  </span>
-                  <ArrowRight size={14} color={c.gray} />
-                </button>
               </div>
             </div>
           </div>
@@ -1485,17 +1265,7 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                 chars)
               </button>
 
-              <button
-                className={`py-3 text-xs font-bold border-b-2 transition-all ${
-                  inspectActiveTab === "questions"
-                    ? "border-amber-500 text-amber-600"
-                    : "border-transparent text-gray-500 hover:text-gray-800"
-                }`}
-                onClick={() => setInspectActiveTab("questions")}
-              >
-                ❓ Questions in Database (
-                {inspectedChapter?.questions?.length || 0})
-              </button>
+
 
               {inspectedChapter?.source_file_url && (
                 <button
@@ -1558,86 +1328,7 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                     </div>
                   )}
                 </div>
-              ) : inspectActiveTab === "questions" ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-500 font-medium">
-                      Stored Questions (
-                      {inspectedChapter?.questions?.length || 0})
-                    </span>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleGenerateMoreQuestions(inspectedChapter.id)
-                      }
-                      className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 flex items-center gap-1"
-                    >
-                      <Plus size={14} /> Generate More Questions
-                    </button>
-                  </div>
-
-                  {inspectedChapter?.questions &&
-                  inspectedChapter.questions.length > 0 ? (
-                    inspectedChapter.questions.map((q, idx) => (
-                      <div key={q.id || idx} className="question-item-card">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="app-badge app-badge-info text-[10px]">
-                              {q.question_type === "mcq"
-                                ? "MCQ"
-                                : "Short Answer"}
-                            </span>
-                            <span className="app-badge app-badge-warning text-[10px]">
-                              {q.difficulty}
-                            </span>
-                          </div>
-                        </div>
-
-                        <h4
-                          className="font-bold text-xs mb-2"
-                          style={{ color: c.dark }}
-                        >
-                          {idx + 1}. {q.question_text}
-                        </h4>
-
-                        {q.options && Array.isArray(q.options) && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                            {q.options.map((opt, optIdx) => {
-                              const isCorrect =
-                                opt.letter === q.correct_answer || opt.correct;
-                              return (
-                                <div
-                                  key={optIdx}
-                                  className={`question-mcq-option ${isCorrect ? "is-correct" : ""}`}
-                                >
-                                  <div className="option-letter-badge">
-                                    {opt.letter}
-                                  </div>
-                                  <span className="flex-1">{opt.text}</span>
-                                  {isCorrect && (
-                                    <CheckCircle size={14} color="#306a5a" />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {q.explanation && (
-                          <div className="question-explanation-box text-[11px]">
-                            💡 {q.explanation}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 bg-gray-50 rounded-xl text-xs text-gray-500">
-                      No questions saved yet. Click "Generate More Questions" or
-                      "Reprocess" to generate AI questions.
-                    </div>
-                  )}
-                </div>
               ) : (
                 <div>
                   {inspectedChapter?.source_file_url ? (

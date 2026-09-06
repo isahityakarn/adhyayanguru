@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ArrowLeft, BookOpen, FileText, LayoutList, Layers, ExternalLink, MessageCircle, PenTool, CheckCircle, Search, HelpCircle, FileQuestion, Book } from 'lucide-react';
-import { get } from '../../../utils/api';
+import { get, post } from '../../../utils/api';
 import './CurriculumExplorer.css';
 
 export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
@@ -13,6 +13,41 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
   const selectedSubject = path.length >= 2 ? path[1] : null;
   const selectedChapter = path.length >= 3 ? path[2] : null;
   const chapterDetails = path.length >= 3 ? data : null;
+  const [generatingType, setGeneratingType] = useState(null);
+
+  const handleGenerateQuestions = async (type) => {
+    if (!chapterDetails) return;
+    
+    let mcqCount = 0;
+    let subjectiveCount = 0;
+
+    if (type === 'mcq') {
+      const count = prompt("How many additional MCQs do you want to generate?", "10");
+      if (!count) return;
+      mcqCount = parseInt(count, 10);
+    } else {
+      const count = prompt("How many additional Subjective Questions do you want to generate?", "5");
+      if (!count) return;
+      subjectiveCount = parseInt(count, 10);
+    }
+
+    setGeneratingType(type);
+    try {
+      await post(`/admin/chapters/${chapterDetails.id}/generate-questions`, {
+        mcq_count: mcqCount,
+        subjective_count: subjectiveCount,
+        replace_existing: false
+      });
+      alert(`Success! Generated questions.`);
+      
+      const res = await get(`/admin/chapters/${chapterDetails.id}`);
+      setData(res.chapter || res.data || null);
+    } catch (err) {
+      alert("Error generating questions: " + err.message);
+    } finally {
+      setGeneratingType(null);
+    }
+  };
 
   const navigateTo = async (level, item) => {
     setLoading(true);
@@ -160,13 +195,13 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
     let mcqs = [];
     let written = [];
     if (chapterDetails.questions && Array.isArray(chapterDetails.questions)) {
-       mcqs = chapterDetails.questions.filter(q => q.question_type === 'mcq' || (q.options && q.options.length > 0) || !q.expected_answer);
-       written = chapterDetails.questions.filter(q => q.question_type === 'short_answer' || q.expected_answer);
+       mcqs = chapterDetails.questions.filter(q => q.question_type === 'mcq');
+       written = chapterDetails.questions.filter(q => q.question_type === 'short_answer' || q.question_type === 'subjective');
     } else if (chapterDetails.questions && typeof chapterDetails.questions === 'string') {
        try {
            const parsed = JSON.parse(chapterDetails.questions);
-           mcqs = parsed.filter(q => q.question_type === 'mcq' || (q.options && q.options.length > 0) || !q.expected_answer);
-           written = parsed.filter(q => q.question_type === 'short_answer' || q.expected_answer);
+           mcqs = parsed.filter(q => q.question_type === 'mcq');
+           written = parsed.filter(q => q.question_type === 'short_answer' || q.question_type === 'subjective');
        } catch (e) {}
     }
 
@@ -211,6 +246,15 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
                 <span>Text Status</span>
              </div>
            </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: '15px', marginBottom: '15px' }}>
+           <button className="admin-primary-button" onClick={() => handleGenerateQuestions('mcq')} disabled={generatingType !== null}>
+             {generatingType === 'mcq' ? 'Processing AI...' : '+ Generate MCQs'}
+           </button>
+           <button className="admin-secondary-button" style={{ background: '#e2e8f0', color: '#1e293b', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => handleGenerateQuestions('subjective')} disabled={generatingType !== null}>
+             {generatingType === 'subjective' ? 'Processing AI...' : '+ Generate Subjective'}
+           </button>
         </div>
 
         <div className="ce-q-container">
