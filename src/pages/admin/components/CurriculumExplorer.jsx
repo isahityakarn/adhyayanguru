@@ -120,6 +120,19 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
     return '#475569';
   };
 
+  const getQuestionsCount = (chapter) => {
+    // First try the questions_count field (if backend provides it)
+    if (chapter.questions_count !== undefined && chapter.questions_count !== null) {
+      return chapter.questions_count;
+    }
+    // Otherwise, calculate from the questions array
+    if (chapter.questions && Array.isArray(chapter.questions)) {
+      return chapter.questions.length;
+    }
+    // Default to 0 if no questions data available
+    return 0;
+  };
+
   const renderBreadcrumbs = () => {
     return (
       <div className="ce-breadcrumbs">
@@ -188,7 +201,7 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
             <p>{chap.extracted_text ? 'Processed & AI Questions Generated' : 'PDF Only / Unprocessed'}</p>
           </div>
           <div className="ce-list-stats">
-            <span className="ce-stat-badge"><HelpCircle size={12}/> {chap.questions_count || 0} Questions</span>
+            <span className="ce-stat-badge"><HelpCircle size={12}/> {getQuestionsCount(chap)} Questions</span>
           </div>
           <ChevronRight size={18} className="ce-list-chevron" />
         </div>
