@@ -67,7 +67,7 @@ export default function PlansPage() {
               description: "Perfect for getting started",
               price_inr: 299,
               duration_days: 30,
-              features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Progress tracking"]
+              features: ["Access to all subjects", "AI Tutor 24/7", "Progress tracking"]
             },
             {
               id: 2,
@@ -75,7 +75,7 @@ export default function PlansPage() {
               description: "Most popular choice",
               price_inr: 1499,
               duration_days: 180,
-              features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Detailed analytics", "Priority support"]
+              features: ["Access to all subjects", "AI Tutor 24/7", "Detailed analytics", "Priority support"]
             },
             {
               id: 3,
@@ -83,7 +83,7 @@ export default function PlansPage() {
               description: "Best value for full year mastery",
               price_inr: 2499,
               duration_days: 365,
-              features: ["Access to all subjects", "Unlimited quizzes", "AI Tutor 24/7", "Downloadable content", "Priority support", "30% savings"]
+              features: ["Access to all subjects", "AI Tutor 24/7", "Downloadable content", "Priority support", "30% savings"]
             }
           ];
           setPlans(samplePlans);

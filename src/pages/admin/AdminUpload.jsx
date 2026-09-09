@@ -12,10 +12,17 @@ import {
   Copy,
   Check,
   Library,
+  FolderPlus,
+  Brain,
+  BookOpen,
+  FileCheck,
+  HelpCircle,
+  Eye,
+  ArrowRight,
 } from "lucide-react";
 import { Input, PrimaryButton } from "../../components/UI";
 import { get, post, put } from "../../utils/api";
-import { c } from "../../utils/theme";
+import { c, headingFont } from "../../utils/theme";
 
 export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -87,7 +94,34 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   });
   const [editingSubject, setEditingSubject] = useState(null);
 
+  // Subjects tab state (for filtering and listing all subjects)
+  const [allSubjects, setAllSubjects] = useState([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
+  const [filterSubClass, setFilterSubClass] = useState("");
+  const [filterSubBoard, setFilterSubBoard] = useState("");
+  const [subjectSearch, setSubjectSearch] = useState("");
 
+  // Chapters tab state (placeholder for future use)
+  const loadChapters = () => {
+    // Placeholder function for chapters tab
+    console.log("Load chapters functionality");
+  };
+
+  // Add Question Modal state
+  const [addQuestionModalOpen, setAddQuestionModalOpen] = useState(false);
+  const [newQuestionData, setNewQuestionData] = useState({
+    chapter_id: "",
+    question_type: "mcq",
+    question_text: "",
+    options: [],
+    correct_answer: "",
+    difficulty: "medium",
+  });
+
+  // Placeholder for loadQuestions function
+  const loadQuestions = () => {
+    console.log("Load questions functionality");
+  };
 
   // Modal / Drawer state for inspecting chapter
   const [inspectModalOpen, setInspectModalOpen] = useState(false);
@@ -95,6 +129,12 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
   const [isLoadingInspect, setIsLoadingInspect] = useState(false);
   const [inspectActiveTab, setInspectActiveTab] = useState("content"); // 'content' | 'questions' | 'pages' | 'pdf'
   const [copiedText, setCopiedText] = useState(false);
+
+  // Placeholder for openInspectModal function
+  const openInspectModal = (chapterId) => {
+    console.log("Opening inspect modal for chapter:", chapterId);
+    // This would load chapter details and open the modal
+  };
 
 
 
@@ -971,21 +1011,6 @@ export default function AdminUploadPage({ initialTab, embedded = false }) {
                     onClick={() => openInspectModal(uploadResult.id)}
                   >
                     <Eye size={14} /> Inspect Extracted Content & Questions
-                  </button>
-
-                  <button
-                    type="button"
-                    className="button-medium font-semibold rounded-lg text-xs flex items-center justify-center gap-2"
-                    style={{
-                      background: "#fff",
-                      border: `1px solid ${c.primary}`,
-                      color: c.primary,
-                    }}
-                    onClick={() =>
-                      navigate(`/quiz?chapter_id=${uploadResult.id}`)
-                    }
-                  >
-                    <Play size={14} /> Launch Practice Quiz
                   </button>
                 </div>
               </div>

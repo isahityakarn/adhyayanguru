@@ -5,9 +5,6 @@ import LoginPage from "./pages/Login";
 import DashboardPage from "./pages/student/Dashboard";
 import ChapterListPage from "./pages/student/ChapterList";
 import TutorChatPage from "./pages/student/TutorChat";
-import QuizPage from "./pages/student/Quiz";
-import QuizHistoryPage from "./pages/student/QuizHistory";
-import AdminQuizManagementPage from "./pages/admin/AdminQuizManagement";
 import ParentDashboardPage from "./pages/ParentDashboard";
 import PlansPage from "./pages/student/Plans";
 import AdminPage from "./pages/admin/Admin";
@@ -34,7 +31,6 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/admin/quizzes" element={<AdminRoute><AdminQuizManagementPage /></AdminRoute>} />
         <Route path="/admin/*" element={<AdminRoute />} />
 
         <Route element={<Layout />}>
@@ -60,27 +56,6 @@ export default function App() {
               <StudentRoute>
                 <SubscriptionGuard>
                   <TutorChatPage />
-                </SubscriptionGuard>
-              </StudentRoute>
-            } 
-          />
-          <Route 
-            path="/quiz" 
-            element={
-              <StudentRoute>
-                <SubscriptionGuard>
-                  <QuizPage />
-                </SubscriptionGuard>
-              </StudentRoute>
-            } 
-          />
-          
-          <Route 
-            path="/quiz-history" 
-            element={
-              <StudentRoute>
-                <SubscriptionGuard>
-                  <QuizHistoryPage />
                 </SubscriptionGuard>
               </StudentRoute>
             } 

@@ -2,16 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
-  ArrowRight,
   BookOpen,
   CheckCircle,
   XCircle,
   Clock,
-  Lock,
-  Unlock,
-  Play,
-  Trophy,
-  Sparkles,
   ChevronRight,
   Loader2,
   FolderOpen
@@ -54,7 +48,6 @@ export default function ChapterListPage() {
   // Chapters State for Selected Subject
   const [chapters, setChapters] = useState([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
-  const [quizStatuses, setQuizStatuses] = useState({});
   const [errorMsg, setErrorMsg] = useState("");
 
   // 1. Fetch Subjects on mount
@@ -112,20 +105,6 @@ export default function ChapterListPage() {
       const response = await get(`/chapters?subject_id=${subjectId}`);
       const list = response.chapters || response || [];
       setChapters(list);
-
-      // Fetch quiz status for each chapter
-      const statusMap = {};
-      await Promise.all(
-        list.map(async (ch) => {
-          try {
-            const res = await get(`/chapters/${ch.id}/quiz/status`);
-            statusMap[ch.id] = res.data;
-          } catch {
-            // fallback
-          }
-        })
-      );
-      setQuizStatuses(statusMap);
     } catch (err) {
       console.error("Failed to fetch chapters for subject:", err);
       setErrorMsg("Failed to load chapters for this subject.");
@@ -155,13 +134,6 @@ export default function ChapterListPage() {
         status: newStatus,
         percent_complete: newPct,
       });
-
-      // Refresh quiz status for this chapter
-      const res = await get(`/chapters/${chapterId}/quiz/status`);
-      setQuizStatuses((prev) => ({
-        ...prev,
-        [chapterId]: res.data,
-      }));
     } catch (err) {
       console.error("Failed to update chapter completion:", err);
       alert("Failed to update chapter status.");
@@ -204,13 +176,6 @@ export default function ChapterListPage() {
               <ArrowLeft size={14} /> All Subjects
             </button>
           )}
-
-          <Link
-            to="/quiz-history"
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-xs flex items-center gap-1.5"
-          >
-            <Trophy size={16} className="text-amber-500" /> My Quiz History
-          </Link>
         </div>
       </div>
 
@@ -224,7 +189,7 @@ export default function ChapterListPage() {
       {!selectedSubject && (
         <div>
           <p className="text-sm font-semibold text-gray-500 mb-6">
-            Choose a subject to view its chapter list and available quizzes:
+            Choose a subject to view its chapter list:
           </p>
 
           {subjectsLoading ? (
@@ -262,7 +227,7 @@ export default function ChapterListPage() {
                       {subject.name}
                     </h2>
                     <p className="text-xs text-gray-500 line-clamp-2 mb-6">
-                      {subject.description || `Explore interactive lessons, AI tutor assistance, and chapter quizzes for ${subject.name}.`}
+                      {subject.description || `Explore interactive lessons and AI tutor assistance for ${subject.name}.`}
                     </p>
                   </div>
 
@@ -321,12 +286,8 @@ export default function ChapterListPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {chapters.map((ch) => {
-                const statusData = quizStatuses[ch.id];
-                const isCompleted = statusData?.chapter_completed;
-                const attempts = statusData?.attempts || 0;
-                const bestScore = statusData?.best_score || 0;
-                const isQuizAvailable = statusData?.quiz_available;
-                const quiz = statusData?.quiz;
+                // Check if chapter has progress data
+                const isCompleted = ch.progress?.status === "completed";
 
                 return (
                   <Card key={ch.id} className="border border-gray-200 hover:border-amber-300 transition-all flex flex-col justify-between">
@@ -352,44 +313,6 @@ export default function ChapterListPage() {
                         {ch.title}
                       </h2>
                       <p className="text-xs font-semibold text-gray-500 mb-4">{selectedSubject.name}</p>
-
-                      {/* Quiz Status Badge / Overview Box */}
-                      <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 mb-4 space-y-1 text-xs">
-                        {!isCompleted ? (
-                          <div>
-                            <div className="font-extrabold text-amber-800 flex items-center gap-1">
-                              <Lock size={13} /> 🔒 Quiz Locked
-                            </div>
-                            <p className="text-gray-500 text-[11px] mt-0.5">Complete this chapter to unlock the quiz.</p>
-                          </div>
-                        ) : attempts > 0 ? (
-                          <div>
-                            <div className="font-extrabold text-emerald-700 flex items-center gap-1">
-                              <CheckCircle size={13} /> ✓ Quiz Completed
-                            </div>
-                            <div className="flex justify-between items-center text-gray-700 text-[11px] mt-1">
-                              <span>Best Score: <strong className="text-emerald-600 font-extrabold">{bestScore}%</strong></span>
-                              <span>Attempts: {attempts}</span>
-                            </div>
-                          </div>
-                        ) : !isQuizAvailable ? (
-                          <div>
-                            <div className="font-extrabold text-gray-500 flex items-center gap-1">
-                              <Lock size={13} /> No Quiz Yet
-                            </div>
-                            <p className="text-gray-500 text-[11px] mt-0.5">Quiz generation in progress or not uploaded.</p>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="font-extrabold text-emerald-700 flex items-center gap-1">
-                              <Unlock size={13} /> 🔓 Quiz Available
-                            </div>
-                            <p className="text-gray-600 text-[11px] font-medium mt-0.5">
-                              {quiz?.total_mcq || 0} MCQs + {quiz?.total_written || 0} Written Questions
-                            </p>
-                          </div>
-                        )}
-                      </div>
                     </div>
 
                     {/* Action Buttons */}
@@ -399,7 +322,7 @@ export default function ChapterListPage() {
                           onClick={() => navigate(`/tutor?chapter_id=${ch.id}`)}
                           className="flex-1 py-2 px-3 text-xs font-bold rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-1.5"
                         >
-                          <BookOpen size={14} /> Study
+                          <BookOpen size={14} /> Study Chapter
                         </button>
 
                         <button
@@ -409,50 +332,19 @@ export default function ChapterListPage() {
                               ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
                               : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                           }`}
-                          title={isCompleted ? "Remove Complete (Mark Incomplete)" : "Mark Chapter Complete"}
+                          title={isCompleted ? "Mark Incomplete" : "Mark Complete"}
                         >
                           {isCompleted ? (
                             <>
-                              <XCircle size={14} /> Remove Complete
+                              <XCircle size={14} /> Incomplete
                             </>
                           ) : (
                             <>
-                              <CheckCircle size={14} /> Mark Complete
+                              <CheckCircle size={14} /> Complete
                             </>
                           )}
                         </button>
                       </div>
-
-                      {isCompleted && isQuizAvailable ? (
-                        <PrimaryButton
-                          onClick={() => navigate(`/quiz?chapter_id=${ch.id}`)}
-                          className="w-full py-2 text-xs font-bold flex items-center justify-center gap-1.5"
-                        >
-                          {attempts > 0 ? (
-                            <>
-                              <Trophy size={14} /> Retake Quiz / View Result
-                            </>
-                          ) : (
-                            <>
-                              <Play size={14} /> Start Quiz ({quiz?.total_mcq || 0} MCQ + {quiz?.total_written || 0} Written)
-                            </>
-                          )}
-                        </PrimaryButton>
-                      ) : isCompleted && !isQuizAvailable ? (
-                        <button
-                          disabled
-                          className="w-full py-2 text-xs font-bold rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed flex items-center justify-center gap-1.5"
-                        >
-                          <Lock size={14} /> No Quiz Generated Yet
-                        </button>
-                      ) : (
-                        <button
-                          disabled
-                          className="w-full py-2 text-xs font-bold rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed flex items-center justify-center gap-1.5"
-                        >
-                          <Lock size={14} /> Quiz Locked (Complete Chapter First)
-                        </button>
-                      )}
                     </div>
                   </Card>
                 );

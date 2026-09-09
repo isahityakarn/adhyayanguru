@@ -392,7 +392,7 @@ export default function DashboardPage() {
                   margin: "0 auto",
                 }}
               >
-                Get unlimited access to all subjects, AI tutor, quizzes, and premium content
+                Get unlimited access to all subjects, AI tutor, and premium content
               </p>
             </div>
 

@@ -106,6 +106,15 @@ export function put(path, body, options = {}) {
   });
 }
 
+export function patch(path, body, options = {}) {
+  return request(path, {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options.headers },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
 export function del(path, options = {}) {
   return request(path, { ...options, method: "DELETE" });
 }

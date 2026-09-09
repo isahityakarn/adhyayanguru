@@ -22,11 +22,11 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
     let subjectiveCount = 0;
 
     if (type === 'mcq') {
-      const count = prompt("How many additional MCQs do you want to generate?", "10");
+      const count = prompt("How many additional MCQs do you want to generate?", "20");
       if (!count) return;
       mcqCount = parseInt(count, 10);
     } else {
-      const count = prompt("How many additional Subjective Questions do you want to generate?", "5");
+      const count = prompt("How many additional Subjective Questions do you want to generate?", "20");
       if (!count) return;
       subjectiveCount = parseInt(count, 10);
     }
@@ -341,7 +341,7 @@ export default function CurriculumExplorer({ classes, onOpenUploadModal }) {
         <div>
           <span className="admin-kicker">Curriculum Explorer</span>
           <h1>{path.length === 0 ? "All Classes" : (path.length === 1 ? selectedClass.name : (path.length === 2 ? `${selectedClass.name} - ${selectedSubject.name}` : chapterDetails?.title || "Chapter Details"))}</h1>
-          <p>Navigate deeply into the class materials and automatically generated AI quizzes.</p>
+          <p>Navigate deeply into the class materials and automatically generated AI questions.</p>
         </div>
       </div>
       
