@@ -47,6 +47,9 @@ async function request(path, options = {}) {
       },
     });
   } catch (networkErr) {
+    if (networkErr.name === "AbortError") {
+      throw networkErr;
+    }
     throw new Error(`Network/CORS connection failed to API: ${url}`);
   }
 

@@ -611,11 +611,15 @@ export default function TutorChatPage() {
         
         contentMessage = systemMessage;
       } else if (chapterContent) {
-        // We have extracted content
+        // We have extracted content - truncate to prevent huge request payload
+        const truncatedContent = typeof chapterContent === "string" && chapterContent.length > 4000
+          ? chapterContent.slice(0, 4000) + "... [truncated for length]"
+          : chapterContent;
+
         const isHindi = getUserLanguage().startsWith("hi");
         systemMessage = isHindi
-          ? `[सिस्टम संदेश: अध्याय "${chapterLabel}" की सामग्री उपलब्ध है। कृपया इस सामग्री के आधार पर उत्तर दें।]\n\n${chapterContent}`
-          : `[SYSTEM MESSAGE: The chapter "${chapterLabel}" content is available below. Please base your responses on this content.]\n\n${chapterContent}`;
+          ? `[सिस्टम संदेश: अध्याय "${chapterLabel}" की सामग्री उपलब्ध है। कृपया इस सामग्री के आधार पर उत्तर दें।]\n\n${truncatedContent}`
+          : `[SYSTEM MESSAGE: The chapter "${chapterLabel}" content is available below. Please base your responses on this content.]\n\n${truncatedContent}`;
         
         contentMessage = systemMessage;
       }
@@ -623,8 +627,6 @@ export default function TutorChatPage() {
       const chapterContext = {
         id: selectedChapter || null,
         title: chapterLabel,
-        content: contentMessage,
-        chapter_content: contentMessage,
         pdf_url: chapter?.source_file_url ?? null,
         source_file_url: chapter?.source_file_url ?? null,
         has_pdf: !!chapter?.source_file_url,
@@ -639,17 +641,13 @@ export default function TutorChatPage() {
         message: question,
         subject_id: selectedSubject || subjectId || null,
         subject: subjectName,
-        subject_name: subjectName,
         chapter_id: selectedChapter || null,
         chapter_content: contentMessage,
-        pdf_url: chapterContext.pdf_url,
-        source_file_url: chapterContext.source_file_url,
         chapter: chapterLabel,
         chapter_context: chapterContext,
         context: {
           subject_id: selectedSubject || subjectId || null,
           subject: subjectName,
-          subject_name: subjectName,
           chapter_id: selectedChapter || null,
           chapter: chapterLabel,
           chapter_content: contentMessage,
