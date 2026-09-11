@@ -224,10 +224,11 @@ function getBestIndianFemaleVoice() {
 export default function TutorChatPage() {
   const [searchParams] = useSearchParams();
   const subjectId = searchParams.get("subject_id");
+  const chapterIdParam = searchParams.get("chapter_id");
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState(subjectId || "");
   const [chapters, setChapters] = useState([]);
-  const [selectedChapter, setSelectedChapter] = useState("");
+  const [selectedChapter, setSelectedChapter] = useState(chapterIdParam || "");
   const [chapterProgress, setChapterProgress] = useState(null);
   const [completedChapterIds, setCompletedChapterIds] = useState(new Set());
   const [hideCompleted, setHideCompleted] = useState(false);
@@ -409,6 +410,29 @@ export default function TutorChatPage() {
     }
   }, [subjectId]);
 
+  // When chapter_id is provided in URL, auto-resolve and select its subject
+  useEffect(() => {
+    let active = true;
+    async function resolveChapterSubject() {
+      if (!chapterIdParam) return;
+      try {
+        const response = await get(`/chapters/${encodeURIComponent(chapterIdParam)}`);
+        const loadedChapter = getChapterDetail(response);
+        if (active && loadedChapter) {
+          const subId = loadedChapter.subject_id || loadedChapter.subject?.id;
+          if (subId) {
+            setSelectedSubject(String(subId));
+          }
+          setSelectedChapter(String(chapterIdParam));
+        }
+      } catch (err) {
+        console.error("Failed to resolve chapter subject", err);
+      }
+    }
+    resolveChapterSubject();
+    return () => { active = false; };
+  }, [chapterIdParam]);
+
   useEffect(() => {
     let active = true;
     async function loadSubjects() {
@@ -428,7 +452,7 @@ export default function TutorChatPage() {
 
         if (active && Array.isArray(list) && list.length > 0) {
           setSubjects(list);
-          if (!subjectId && !selectedSubject) {
+          if (!subjectId && !chapterIdParam && !selectedSubject) {
             setSelectedSubject(String(list[0].id));
           }
         }
@@ -438,7 +462,7 @@ export default function TutorChatPage() {
     }
     loadSubjects();
     return () => { active = false; };
-  }, []);
+  }, [subjectId, chapterIdParam]);
 
   const handlePlayVoicePreview = async (voice) => {
     setPreviewingVoiceId(voice.id);
@@ -500,6 +524,9 @@ export default function TutorChatPage() {
 
     async function loadChapters() {
       const activeSubjectId = selectedSubject || subjectId;
+      if (!activeSubjectId && chapterIdParam) {
+        return;
+      }
       setChaptersLoading(true);
       setChaptersError("");
 
@@ -513,6 +540,9 @@ export default function TutorChatPage() {
           setChapters(items);
           if (items.length > 0) {
             setSelectedChapter((prev) => {
+              const target = chapterIdParam || prev;
+              const targetExists = items.some(ch => String(getChapterId(ch, "")) === String(target));
+              if (targetExists) return String(target);
               const exists = items.some(ch => String(getChapterId(ch, "")) === String(prev));
               return exists ? prev : String(getChapterId(items[0], 1));
             });
@@ -529,7 +559,7 @@ export default function TutorChatPage() {
 
     loadChapters();
     return () => { active = false; };
-  }, [subjectId, selectedSubject]);
+  }, [subjectId, selectedSubject, chapterIdParam]);
 
   useEffect(() => {
     let active = true;
@@ -554,6 +584,12 @@ export default function TutorChatPage() {
           const loadedChapter = getChapterDetail(response);
           setChapter(loadedChapter);
           
+          // Auto-sync selectedSubject to this chapter's subject
+          const chSubId = loadedChapter?.subject_id || loadedChapter?.subject?.id;
+          if (chSubId) {
+            setSelectedSubject((prev) => (String(prev) !== String(chSubId) ? String(chSubId) : prev));
+          }
+
           // Add a context-aware greeting when chapter loads
           const chapterLabel = getChapterLabel(loadedChapter, selectedChapter);
           const isHindi = getUserLanguage().startsWith("hi");

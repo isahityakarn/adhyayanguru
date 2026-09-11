@@ -819,7 +819,7 @@ export default function ChapterListPage() {
                     <div className="space-y-2 pt-2 border-t border-gray-100">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => navigate(`/tutor?chapter_id=${ch.id}`)}
+                          onClick={() => navigate(`/tutor?chapter_id=${ch.id}&subject_id=${selectedSubject?.id || ch.subject_id || ""}`)}
                           className="flex-1 py-2 px-3 text-xs font-bold rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <BookOpenIcon size={14} /> Study Chapter
