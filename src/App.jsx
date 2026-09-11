@@ -7,6 +7,7 @@ import ChapterListPage from "./pages/student/ChapterList";
 import TutorChatPage from "./pages/student/TutorChat";
 import QuizPage from "./pages/student/Quiz";
 import QuizHistoryPage from "./pages/student/QuizHistory";
+import TestResultsPage from "./pages/student/TestResults";
 import ParentDashboardPage from "./pages/ParentDashboard";
 import PlansPage from "./pages/student/Plans";
 import AdminPage from "./pages/admin/Admin";
@@ -78,6 +79,16 @@ export default function App() {
               <StudentRoute>
                 <SubscriptionGuard>
                   <QuizHistoryPage />
+                </SubscriptionGuard>
+              </StudentRoute>
+            } 
+          />
+          <Route 
+            path="/test-results" 
+            element={
+              <StudentRoute>
+                <SubscriptionGuard>
+                  <TestResultsPage />
                 </SubscriptionGuard>
               </StudentRoute>
             } 

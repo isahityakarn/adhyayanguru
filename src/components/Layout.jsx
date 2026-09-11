@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link, useNavigate, Outlet } from "react-router-dom";
-import { Home, BookOpen, Users, Settings, LogIn, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Crown, Menu, X } from "lucide-react";
+import { Home, BookOpen, Users, Settings, LogIn, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Crown, Menu, X, Award } from "lucide-react";
 import { c, headingFont } from "../utils/theme";
 
 const PAGES = [
@@ -8,6 +8,7 @@ const PAGES = [
   { id: "login", label: "Login", path: "/login", icon: LogIn, publicOnly: true },
   { id: "dashboard", label: "Student dashboard", path: "/dashboard", icon: LayoutDashboard, studentOnly: true },
   { id: "chapters", label: "Chapter list", path: "/chapters", icon: BookOpen, studentOnly: true },
+  { id: "test-results", label: "Test Results", path: "/test-results", icon: Award, studentOnly: true },
   { id: "plans", label: "Plans & Pricing", path: "/plans", icon: Crown, studentOnly: true },
   { id: "parent", label: "Parent dashboard", path: "/parent", icon: Users, studentOnly: true },
   { id: "admin", label: "Admin panel", path: "/admin", icon: Settings, adminOnly: true },

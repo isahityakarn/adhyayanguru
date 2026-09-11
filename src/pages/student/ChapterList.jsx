@@ -848,20 +848,30 @@ export default function ChapterListPage() {
 
                       {/* Chapter Test Action Button */}
                       {isCompleted && isQuizAvailable ? (
-                        <PrimaryButton
-                          onClick={() => navigate(`/quiz?chapter_id=${ch.id}`)}
-                          className="w-full py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs"
-                        >
-                          {attempts > 0 ? (
-                            <>
-                              <TrophyIcon size={14} /> Retake Test / View Result
-                            </>
-                          ) : (
-                            <>
-                              <PlayIcon size={14} /> Start Chapter Test ({quiz?.total_mcq || 50} MCQ + {quiz?.total_written || 20} Written)
-                            </>
-                          )}
-                        </PrimaryButton>
+                        attempts > 0 ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => navigate(`/test-results?subject_id=${selectedSubject?.id || ch.subject_id || ""}&chapter_id=${ch.id}`)}
+                              className="flex-1 py-2.5 px-3 text-xs font-bold rounded-xl bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100 flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                            >
+                              <TrophyIcon size={14} /> View Test Result
+                            </button>
+                            <PrimaryButton
+                              onClick={() => navigate(`/quiz?chapter_id=${ch.id}`)}
+                              className="py-2.5 px-3 text-xs font-bold flex items-center justify-center gap-1 shadow-xs"
+                              title="Retake Test"
+                            >
+                              <PlayIcon size={14} /> Retake
+                            </PrimaryButton>
+                          </div>
+                        ) : (
+                          <PrimaryButton
+                            onClick={() => navigate(`/quiz?chapter_id=${ch.id}`)}
+                            className="w-full py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs"
+                          >
+                            <PlayIcon size={14} /> Start Chapter Test ({quiz?.total_mcq || 50} MCQ + {quiz?.total_written || 20} Written)
+                          </PrimaryButton>
+                        )
                       ) : isCompleted && !isQuizAvailable ? (
                         <button
                           onClick={async () => {
