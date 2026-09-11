@@ -5,6 +5,8 @@ import LoginPage from "./pages/Login";
 import DashboardPage from "./pages/student/Dashboard";
 import ChapterListPage from "./pages/student/ChapterList";
 import TutorChatPage from "./pages/student/TutorChat";
+import QuizPage from "./pages/student/Quiz";
+import QuizHistoryPage from "./pages/student/QuizHistory";
 import ParentDashboardPage from "./pages/ParentDashboard";
 import PlansPage from "./pages/student/Plans";
 import AdminPage from "./pages/admin/Admin";
@@ -56,6 +58,26 @@ export default function App() {
               <StudentRoute>
                 <SubscriptionGuard>
                   <TutorChatPage />
+                </SubscriptionGuard>
+              </StudentRoute>
+            } 
+          />
+          <Route 
+            path="/quiz" 
+            element={
+              <StudentRoute>
+                <SubscriptionGuard>
+                  <QuizPage />
+                </SubscriptionGuard>
+              </StudentRoute>
+            } 
+          />
+          <Route 
+            path="/quiz-history" 
+            element={
+              <StudentRoute>
+                <SubscriptionGuard>
+                  <QuizHistoryPage />
                 </SubscriptionGuard>
               </StudentRoute>
             } 
