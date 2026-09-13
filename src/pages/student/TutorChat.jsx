@@ -18,11 +18,6 @@ function getPdfUrl(chapter) {
 
 
 
-
-
-
-
-
 function cleanMathFormatting(text) {
   if (!text || typeof text !== "string") return "";
   let cleaned = text;
@@ -83,6 +78,28 @@ function getUserLanguage() {
   } catch {
     return "en";
   }
+}
+
+// Detect Hindi intent from a list of message objects ({ from, text } or { role, content })
+const HINDI_INTENT_PATTERN = /(hindi|हिंदी|हिन्दी|explain in hindi|in hindi|samjhao|batao|spasht|kya hai|kaise)/i;
+function detectHindiFromMessages(msgs = []) {
+  return msgs
+    .slice(-6)                                   // only last 6 messages matter
+    .filter(m => (m.from ?? m.role) === "user")  // only user messages
+    .some(m => HINDI_INTENT_PATTERN.test(m.text ?? m.content ?? ""));
+}
+
+// Resolve the effective language to send to backend.
+// Priority: explicit Hindi keywords in current message > prior conversation history >
+//           user language_pref > Hindi voice fallback > default "en"
+function getEffectiveLanguage(currentMessage = "", conversationHistory = [], voiceId = "") {
+  if (HINDI_INTENT_PATTERN.test(currentMessage)) return "hi";
+  if (detectHindiFromMessages(conversationHistory)) return "hi";
+  const userLang = getUserLanguage();
+  if (userLang.startsWith("hi")) return "hi";
+  // Treat a Hindi voice selection as implicit preference for Hindi
+  if (voiceId && (voiceId.includes("hindi") || voiceId.includes("swara") || voiceId.includes("madhur"))) return "hi";
+  return "en";
 }
 
 function getGreetingMessage(voiceId = "edge_tts_hindi_female") {
@@ -634,13 +651,16 @@ export default function TutorChatPage() {
       const chapterLabel = String(chapter ? getChapterLabel(chapter, selectedChapter) : selectedChapter || "");
       const chapterContent = getChapterContent(chapter);
       
+      // Resolve the language for this turn — checks current message, history, and voice
+      const effectiveLang = getEffectiveLanguage(question, nextMessages, selectedVoiceId);
+      const isHindi = effectiveLang === "hi";
+
       // Enhanced: Create a clear message about PDF availability
       let contentMessage = chapterContent;
       let systemMessage = "";
       
       if (!chapterContent && chapter?.source_file_url) {
         // No extracted text, but PDF is available
-        const isHindi = getUserLanguage().startsWith("hi");
         systemMessage = isHindi
           ? `[सिस्टम संदेश: छात्र ने अध्याय "${chapterLabel}" का PDF खोला हुआ है और देख रहा है। PDF सामग्री सीधे उपलब्ध नहीं है, लेकिन छात्र इसे पढ़ सकता है। कृपया छात्र से पूछें कि वे अध्याय के किस हिस्से या अवधारणा में मदद चाहते हैं।]`
           : `[SYSTEM MESSAGE: The student has the PDF of chapter "${chapterLabel}" open and is viewing it. The PDF content is not directly extracted, but the student can see and read it. Please acknowledge the chapter and ask the student what specific part or concept they need help with. If they say "read this chapter", offer to explain the key concepts typically covered in such chapters, or ask them to point to specific sections, topics, or page numbers they'd like help with.]`;
@@ -652,7 +672,6 @@ export default function TutorChatPage() {
           ? chapterContent.slice(0, 4000) + "... [truncated for length]"
           : chapterContent;
 
-        const isHindi = getUserLanguage().startsWith("hi");
         systemMessage = isHindi
           ? `[सिस्टम संदेश: अध्याय "${chapterLabel}" की सामग्री उपलब्ध है। कृपया इस सामग्री के आधार पर उत्तर दें।]\n\n${truncatedContent}`
           : `[SYSTEM MESSAGE: The chapter "${chapterLabel}" content is available below. Please base your responses on this content.]\n\n${truncatedContent}`;
@@ -693,7 +712,7 @@ export default function TutorChatPage() {
           has_extracted_text: chapterContext.has_extracted_text,
           voice_id: selectedVoiceId,
         },
-        language: getUserLanguage(),
+        language: effectiveLang,
         messages: nextMessages.map(({ from, text }) => ({ role: from === "ai" ? "assistant" : "user", content: text })),
       }, { signal: controller.signal });
       const reply = getTutorReply(response);
