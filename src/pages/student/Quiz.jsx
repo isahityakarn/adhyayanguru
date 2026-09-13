@@ -73,6 +73,12 @@ export default function QuizPage() {
   const [showMcqDetails, setShowMcqDetails] = useState(false);
   const [expandedWrittenId, setExpandedWrittenId] = useState(null);
 
+  // Student class detection for class-specific rules
+  const storedUser = (() => { try { return JSON.parse(localStorage.getItem("studyyodha_user") || "null"); } catch { return null; } })();
+  const studentClassName = quizData?.class_name || storedUser?.student_profile?.class?.name || storedUser?.class_name || "";
+  const isClass5 = /class\s*5\b|^5$/i.test(studentClassName.trim());
+  const writtenMarksPerQuestion = isClass5 ? 5 : null; // null means use question's own marks
+
   // 1. Load chapters on mount
   useEffect(() => {
     loadChapters();
@@ -230,6 +236,8 @@ export default function QuizPage() {
   // Handle Written Answer Text Change with Autosave
   const handleWrittenChange = (qId, text) => {
     const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+    // Enforce word limit for class 5 students
+    if (isClass5 && words > 50) return;
     setWrittenAnswers((prev) => ({
       ...prev,
       [qId]: { text, wordCount: words }
@@ -940,7 +948,7 @@ export default function QuizPage() {
                   Written Question {writtenIndex + 1} of {writtenQuestions.length}
                 </span>
 
-                <span className="text-xs font-semibold text-gray-500">Marks: {currentWrittenQ.marks || 10}</span>
+                <span className="text-xs font-semibold text-gray-500">Marks: {writtenMarksPerQuestion ?? (currentWrittenQ.marks || 10)}</span>
               </div>
 
               <h2 className="text-lg font-bold mb-4 text-gray-900 leading-snug" style={{ ...headingFont }}>
@@ -948,7 +956,8 @@ export default function QuizPage() {
               </h2>
 
               <p className="text-xs text-gray-500 mb-3 italic">
-                Provide a structured answer. Answer length guidance: {currentWrittenQ.min_words || 20} to {currentWrittenQ.max_words || 300} words.
+                Provide a structured answer. Answer length guidance: {currentWrittenQ.min_words || 20} to {isClass5 ? 50 : (currentWrittenQ.max_words || 300)} words.
+                {isClass5 && <span className="ml-1 text-amber-600 font-semibold not-italic">(Class 5 limit: 50 words)</span>}
               </p>
 
               {/* Text area input */}
@@ -962,7 +971,10 @@ export default function QuizPage() {
                 />
                 <div className="flex justify-between items-center mt-2 text-xs font-semibold text-gray-500">
                   <span>
-                    Words: <strong className="text-indigo-600">{writtenAnswers[currentWrittenQ.id]?.wordCount || 0}</strong> / {currentWrittenQ.max_words || 300}
+                    Words: <strong className={isClass5 && (writtenAnswers[currentWrittenQ.id]?.wordCount || 0) >= 50 ? "text-red-600" : "text-indigo-600"}>{writtenAnswers[currentWrittenQ.id]?.wordCount || 0}</strong> / {isClass5 ? 50 : (currentWrittenQ.max_words || 300)}
+                    {isClass5 && (writtenAnswers[currentWrittenQ.id]?.wordCount || 0) >= 50 && (
+                      <span className="ml-2 text-red-600 font-bold not-italic">Word limit reached</span>
+                    )}
                   </span>
                   <span className="text-emerald-600 flex items-center gap-1">
                     <Check size={14} /> Autosaved
